@@ -1,68 +1,69 @@
 import React from 'react';
-import { motion } from 'framer-motion';
-import { User, Mail, Shield, Bell, Lock } from 'lucide-react';
+import { User, Mail, Shield, Calendar, Edit2 } from 'lucide-react';
+import { useAuth } from '../../context/AuthContext';
 
 const Profile = () => {
+    const { user } = useAuth();
+
     return (
         <div className="max-w-4xl mx-auto space-y-8">
-            <h1 className="text-2xl font-bold text-white">User Profile</h1>
+            <h1 className="text-2xl font-bold text-white">Your Profile</h1>
 
-            <div className="bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden shadow-lg">
-                <div className="h-32 bg-gradient-to-r from-zinc-800 to-zinc-900"></div>
+            <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+                <div className="h-32 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
                 <div className="px-8 pb-8">
-                    <div className="relative flex justify-between items-end -mt-12 mb-6">
-                        <div className="flex items-end">
-                            <div className="h-24 w-24 rounded-full bg-zinc-800 border-4 border-black flex items-center justify-center text-zinc-400">
-                                <User size={40} />
-                            </div>
-                            <div className="ml-4 mb-1">
-                                <h2 className="text-xl font-bold text-white">Admin User</h2>
-                                <p className="text-sm text-zinc-400">Supervisor Role</p>
-                            </div>
+                    <div className="relative -mt-12 mb-6">
+                        <div className="h-24 w-24 rounded-2xl bg-zinc-800 border-4 border-zinc-900 flex items-center justify-center text-3xl font-bold text-white shadow-xl">
+                            {user?.full_name?.charAt(0) || 'U'}
                         </div>
-                        <button className="px-4 py-2 bg-white text-black rounded-lg text-sm font-medium hover:bg-zinc-200 transition-colors">
-                            Edit Profile
-                        </button>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-6">
                             <div>
-                                <h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-4">Contact Information</h3>
-                                <div className="space-y-4">
-                                    <div className="flex items-center text-zinc-300">
-                                        <Mail size={18} className="mr-3 text-zinc-500" />
-                                        <span>admin@example.com</span>
-                                    </div>
-                                    <div className="flex items-center text-zinc-300">
-                                        <Shield size={18} className="mr-3 text-zinc-500" />
-                                        <span>Administrator Access</span>
-                                    </div>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Full Name</label>
+                                <div className="flex items-center text-white bg-black/30 p-3 rounded-lg border border-zinc-800">
+                                    <User size={18} className="mr-3 text-zinc-500" />
+                                    {user?.full_name || 'Not set'}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Email Address</label>
+                                <div className="flex items-center text-white bg-black/30 p-3 rounded-lg border border-zinc-800">
+                                    <Mail size={18} className="mr-3 text-zinc-500" />
+                                    {user?.email}
                                 </div>
                             </div>
                         </div>
 
                         <div className="space-y-6">
                             <div>
-                                <h3 className="text-sm font-medium text-zinc-400 uppercase tracking-wider mb-4">Security</h3>
-                                <div className="space-y-4">
-                                    <div className="flex items-center justify-between py-2 border-b border-zinc-800">
-                                        <div className="flex items-center text-zinc-300">
-                                            <Lock size={18} className="mr-3 text-zinc-500" />
-                                            <span>Password</span>
-                                        </div>
-                                        <button className="text-sm text-blue-400 hover:text-blue-300">Change</button>
-                                    </div>
-                                    <div className="flex items-center justify-between py-2 border-b border-zinc-800">
-                                        <div className="flex items-center text-zinc-300">
-                                            <Shield size={18} className="mr-3 text-zinc-500" />
-                                            <span>2FA Authentication</span>
-                                        </div>
-                                        <button className="text-sm text-blue-400 hover:text-blue-300">Enable</button>
-                                    </div>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Account Role</label>
+                                <div className="flex items-center text-white bg-black/30 p-3 rounded-lg border border-zinc-800">
+                                    <Shield size={18} className="mr-3 text-zinc-500" />
+                                    <span className="capitalize">{user?.role}</span>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Member Since</label>
+                                <div className="flex items-center text-white bg-black/30 p-3 rounded-lg border border-zinc-800">
+                                    <Calendar size={18} className="mr-3 text-zinc-500" />
+                                    {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Today'}
                                 </div>
                             </div>
                         </div>
+                    </div>
+
+                    <div className="mt-8 pt-8 border-t border-zinc-800 flex justify-end">
+                        <button
+                            onClick={() => window.location.href = '/settings'}
+                            className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+                        >
+                            <Edit2 size={16} className="mr-2" />
+                            Edit Profile
+                        </button>
                     </div>
                 </div>
             </div>

@@ -180,7 +180,7 @@ const Landing = () => {
             <section className="py-12 bg-black border-t border-zinc-800">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-5">
-                        {['React', 'Tailwind CSS', 'FastAPI', 'PostgreSQL', 'Tenserflow/PyTorch'].map((tech) => (
+                        {['React', 'Tailwind CSS', 'FastAPI', 'PostgreSQL', 'Tensorflow'].map((tech) => (
                             <div key={tech} className="col-span-1 flex justify-center items-center">
                                 <span className="text-lg font-semibold text-zinc-500 hover:text-white transition-colors cursor-default">
                                     {tech}

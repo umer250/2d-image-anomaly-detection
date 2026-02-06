@@ -2,19 +2,30 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 
+import { useAuth } from '../context/AuthContext';
+
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-    // TODO: Replace with real authentication logic (context or store)
-    const isAuthenticated = true; // Mock: User is logged in
-    const userRole = 'user'; // Mock: Current user role ('user' or 'admin')
+    const { isAuthenticated, user, loading } = useAuth();
     const location = useLocation();
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-black flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+            </div>
+        );
+    }
 
     if (!isAuthenticated) {
         return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
+    const userRole = user?.role || 'user';
+
     if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
         // Redirect to appropriate dashboard if authorized but wrong role
-        return <Navigate to="/" replace />;
+        const redirectPath = userRole === 'admin' ? '/admin/dashboard' : '/dashboard';
+        return <Navigate to={redirectPath} replace />;
     }
 
     return children;

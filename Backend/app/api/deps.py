@@ -22,6 +22,10 @@ def get_db() -> Generator:
 def get_current_user(
     db: Session = Depends(get_db), token: str = Depends(oauth2_scheme)
 ) -> User:
+    """
+    Get current user from JWT token.
+    Extracts user_id and role from the token payload.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -29,16 +33,15 @@ def get_current_user(
     )
     try:
         payload = jwt.decode(
-            token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM] if hasattr(settings, "ALGORITHM") else ["HS256"]
+            token, settings.SECRET_KEY, algorithms=["HS256"]
         )
-        username: str = payload.get("sub")
-        if username is None:
+        user_id: int = payload.get("user_id")
+        if user_id is None:
             raise credentials_exception
-        token_data = TokenPayload(sub=username)
     except (JWTError, AttributeError):
         raise credentials_exception
     
-    user = crud_user.get_user_by_email(db, email=token_data.sub)
+    user = crud_user.get_user(db, user_id=user_id)
     if user is None:
         raise credentials_exception
     return user
@@ -46,6 +49,7 @@ def get_current_user(
 def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
+    """Verify that the current user is active."""
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
@@ -53,8 +57,37 @@ def get_current_active_user(
 def get_current_active_superuser(
     current_user: User = Depends(get_current_user),
 ) -> User:
+    """Verify that the current user is a superuser."""
     if not current_user.is_superuser:
         raise HTTPException(
             status_code=400, detail="The user doesn't have enough privileges"
+        )
+    return current_user
+
+def require_admin(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """
+    Require that the current user has admin role.
+    Use this as a dependency for admin-only endpoints.
+    """
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions. Admin access required."
+        )
+    return current_user
+
+def require_user(
+    current_user: User = Depends(get_current_active_user),
+) -> User:
+    """
+    Require that the current user has user or admin role.
+    Use this as a dependency for user endpoints.
+    """
+    if current_user.role not in ["user", "admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid user role"
         )
     return current_user

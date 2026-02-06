@@ -1,21 +1,57 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, User, ArrowRight, Scan } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, Scan, CheckCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '../../context/AuthContext';
 
 const Register = () => {
     const navigate = useNavigate();
+    const { register } = useAuth();
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [formData, setFormData] = useState({
+        name: '',
+        email: '',
+        password: ''
+    });
 
-    const handleSubmit = (e) => {
+    const handleChange = (e) => {
+        setFormData({
+            ...formData,
+            [e.target.name]: e.target.value
+        });
+    };
+
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
+        setError('');
 
-        // Mock register delay
-        setTimeout(() => {
+        try {
+            // Call register API
+            await register({
+                email: formData.email,
+                password: formData.password,
+                full_name: formData.name,
+                role: 'user',  // Default role
+                is_active: true,
+                is_superuser: false
+            });
+
+            // Show success message briefly then redirect to login
             setLoading(false);
-            navigate('/dashboard');
-        }, 1500);
+            // Redirect to login page after successful registration
+            setTimeout(() => {
+                navigate('/login', {
+                    state: {
+                        message: 'Registration successful! Please login with your credentials.'
+                    }
+                });
+            }, 500);
+        } catch (err) {
+            setLoading(false);
+            setError(err.message || 'Registration failed. Please try again.');
+        }
     };
 
     return (
@@ -62,6 +98,8 @@ const Register = () => {
                                     type="text"
                                     autoComplete="name"
                                     required
+                                    value={formData.name}
+                                    onChange={handleChange}
                                     className="focus:ring-white focus:border-white block w-full pl-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
                                     placeholder="John Doe"
                                 />
@@ -82,6 +120,8 @@ const Register = () => {
                                     type="email"
                                     autoComplete="email"
                                     required
+                                    value={formData.email}
+                                    onChange={handleChange}
                                     className="focus:ring-white focus:border-white block w-full pl-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
                                     placeholder="you@example.com"
                                 />
@@ -102,11 +142,19 @@ const Register = () => {
                                     type="password"
                                     autoComplete="new-password"
                                     required
+                                    value={formData.password}
+                                    onChange={handleChange}
                                     className="focus:ring-white focus:border-white block w-full pl-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
                                     placeholder="••••••••"
                                 />
                             </div>
                         </div>
+
+                        {error && (
+                            <div className="rounded-md bg-red-900/20 border border-red-900 p-3">
+                                <p className="text-sm text-red-400">{error}</p>
+                            </div>
+                        )}
 
                         <div>
                             <button

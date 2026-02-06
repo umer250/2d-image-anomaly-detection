@@ -13,6 +13,8 @@ import {
 import { SkeletonCard } from '../../components/SkeletonCard';
 import clsx from 'clsx';
 
+const BACKEND_URL = 'http://localhost:8000';
+
 const Results = () => {
     const location = useLocation();
     const navigate = useNavigate();
@@ -21,48 +23,55 @@ const Results = () => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Simulate API loading delay
-        const timer = setTimeout(() => {
-            setLoading(false);
-        }, 1500);
-        // If no state, we might want to show a demo result instead of redirecting immediately for testing
-        // But for production flow, redirect is correct.
-        // Let's add a fallback for development/demo if state is missing but we want to see the page
-        if (!location.state?.image) {
-            // Fallback for demo purposes if accessed directly
-            const demoImage = 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80';
+        if (location.state?.analysisResult) {
+            // Use real data passed from Upload
+            const data = location.state.analysisResult;
             setResult({
-                status: 'Anomaly',
-                confidence: '92.50',
-                type: 'Scratch',
-                heatmapOverlay: 'rgba(239, 68, 68, 0.2)'
+                status: data.is_anomaly ? 'Anomaly' : 'Normal',
+                confidence: (data.anomaly_score * 100).toFixed(2),
+                type: data.is_anomaly ? 'Detected Defect' : 'None',
+                heatmapPath: data.heatmap_path,
+                threshold: data.threshold,
+                modelVersion: data.model_version
             });
-            // We need to mock the location state effectively for the render
-            // This is a bit hacky but good for "it doesn't open" complaints if they are just visiting the URL
-            return;
+            setLoading(false);
+        } else {
+            // Fallback / Demo mode if no state
+            // Simulate API loading delay
+            const timer = setTimeout(() => {
+                setLoading(false);
+                if (!location.state?.image) {
+                    // Demo data
+                    setResult({
+                        status: 'Anomaly',
+                        confidence: '87.50',
+                        type: 'Demo Defect',
+                        heatmapPath: null // No heatmap for demo
+                    });
+                } else {
+                    // Mock data if image exists but no result (edge case)
+                    setResult({
+                        status: 'Normal',
+                        confidence: '98.00',
+                        type: 'None',
+                        heatmapPath: null
+                    });
+                }
+            }, 1000);
+            return () => clearTimeout(timer);
         }
-
-        const isAnomaly = Math.random() > 0.5;
-        const confidence = (Math.random() * (99 - 85) + 85).toFixed(2);
-
-        setResult({
-            status: isAnomaly ? 'Anomaly' : 'Normal',
-            confidence: confidence,
-            type: isAnomaly ? ['Scratch', 'Dent', 'Crack'][Math.floor(Math.random() * 3)] : 'None',
-            heatmapOverlay: isAnomaly ? 'rgba(239, 68, 68, 0.2)' : 'rgba(34, 197, 94, 0.1)'
-        });
-
-        return () => clearTimeout(timer);
     }, [location.state, navigate]);
 
     // Construct display data with fallbacks
-    const displayImage = location.state?.image || 'https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?auto=format&fit=crop&w=800&q=80';
-    const displayFileName = location.state?.fileName || 'demo_image.jpg';
-    const displayTimestamp = location.state?.timestamp || new Date().toISOString();
+    // Ensure we are using backend URL if it's a relative path from API
+    const getFullUrl = (path) => {
+        if (!path) return 'https://via.placeholder.com/800x600?text=No+Image';
+        if (path.startsWith('http')) return path;
+        return `${BACKEND_URL}${path}`;
+    };
 
-    if (!result) return null;
-
-    const isAnomaly = result?.status === 'Anomaly';
+    const displayImage = location.state?.image ? getFullUrl(location.state.image) : location.state?.analysisResult?.original_path ? getFullUrl(location.state.analysisResult.original_path) : 'https://via.placeholder.com/800x600?text=No+Image';
+    const displayFileName = location.state?.fileName || result?.details?.original_filename || 'Analyzed Image';
 
     if (loading) {
         return (
@@ -85,6 +94,8 @@ const Results = () => {
     }
 
     if (!result) return null;
+
+    const isAnomaly = result.status === 'Anomaly';
 
     return (
         <div className="max-w-6xl mx-auto space-y-8">
@@ -133,28 +144,31 @@ const Results = () => {
                                         "px-3 py-1 text-xs font-medium rounded-md transition-all",
                                         viewMode === 'heatmap' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300"
                                     )}
+                                    disabled={!result.heatmapPath}
                                 >
                                     Heatmap Overlay
                                 </button>
                             </div>
                         </div>
                         <div className="relative aspect-video bg-slate-900 flex items-center justify-center overflow-hidden group">
+                            {/* Original Image */}
                             <img
                                 src={displayImage}
                                 alt="Analyzed"
-                                className="max-h-[500px] w-auto object-contain"
+                                className="absolute inset-0 w-full h-full object-contain"
                             />
 
-                            {/* Heatmap Overlay Simulation */}
+                            {/* Heatmap Overlay */}
                             <AnimatePresence>
-                                {viewMode === 'heatmap' && (
-                                    <motion.div
+                                {viewMode === 'heatmap' && result.heatmapPath && (
+                                    <motion.img
+                                        src={getFullUrl(result.heatmapPath)} // Use getFullUrl here
+                                        alt="Heatmap"
                                         initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
+                                        animate={{ opacity: 0.7 }}
                                         exit={{ opacity: 0 }}
                                         transition={{ duration: 0.3 }}
-                                        className="absolute inset-0 pointer-events-none"
-                                        style={{ background: `radial-gradient(circle at 50% 50%, ${result.heatmapOverlay}, transparent 70%)` }}
+                                        className="absolute inset-0 w-full h-full object-contain pointer-events-none mix-blend-normal" // Changed mix-blend to normal for better visibility if it's a transparent PNG
                                     />
                                 )}
                             </AnimatePresence>
@@ -168,11 +182,10 @@ const Results = () => {
                     <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
                         <h3 className="font-medium text-blue-400 mb-2">AI Analysis Explanation</h3>
                         <p className="text-sm text-blue-300/80">
-                            The model analyzed the image using a convolutional neural network (CNN) trained on the MVTec AD dataset.
+                            The model (version {result.modelVersion || 'v1.0'}) analyzed the image.
                             {isAnomaly
-                                ? ` It detected irregular texture patterns consistent with a ${result.type.toLowerCase()} defect in the central region.`
-                                : " No significant deviations from the reference normal samples were detected."}
-                            The heatmap highlights the regions of interest that contributed most to the classification.
+                                ? ` It detected anomalies with a confidence score of ${result.confidence}%. The red regions in the heatmap indicate potential defects.`
+                                : " No significant anomalies were detected. The image appears normal."}
                         </p>
                     </div>
                 </motion.div>
@@ -210,27 +223,36 @@ const Results = () => {
                             "text-sm font-medium",
                             isAnomaly ? "text-red-400" : "text-green-400"
                         )}>
-                            {isAnomaly ? `Defect Type: ${result.type}` : "Component is clean"}
+                            {isAnomaly ? "Potential Defect Detected" : "No Anomalies Found"}
                         </div>
                     </div>
 
                     {/* Confidence Card */}
                     <div className="bg-zinc-900 rounded-xl shadow-sm border border-zinc-800 p-6">
-                        <h3 className="text-lg font-bold text-white mb-4">Model Confidence</h3>
+                        <h3 className="text-lg font-bold text-white mb-4">Anomaly Score</h3>
                         <div className="flex items-end justify-between mb-2">
-                            <span className="text-3xl font-bold text-blue-500">{result.confidence}%</span>
-                            <span className="text-sm text-zinc-500 mb-1">Probability</span>
+                            <span className={clsx(
+                                "text-3xl font-bold",
+                                isAnomaly ? "text-red-500" : "text-green-500"
+                            )}>{result.confidence}</span>
+                            <span className="text-sm text-zinc-500 mb-1">Score (0-100)</span>
                         </div>
                         <div className="w-full bg-zinc-800 rounded-full h-3 mb-2">
                             <motion.div
                                 initial={{ width: 0 }}
                                 animate={{ width: `${result.confidence}%` }}
                                 transition={{ duration: 1, delay: 0.5 }}
-                                className="bg-blue-500 h-3 rounded-full"
+                                className={clsx(
+                                    "h-3 rounded-full",
+                                    isAnomaly ? "bg-red-500" : "bg-green-500"
+                                )}
                             />
                         </div>
-                        <p className="text-xs text-zinc-500">
-                            Confidence score indicates the model's certainty in this classification.
+                        <p className="text-xs text-zinc-500 mt-4">
+                            <strong>Details:</strong><br />
+                            Threshold: {result.threshold}<br />
+                            Model: {result.modelVersion}<br />
+                            Pixels: {result.details?.width || 'N/A'}x{result.details?.height || 'N/A'}
                         </p>
                     </div>
 
@@ -243,9 +265,11 @@ const Results = () => {
                             <RefreshCw size={20} className="mr-2" />
                             Analyze Another Image
                         </button>
-                        <button className="w-full px-4 py-3 bg-zinc-900 border border-zinc-700 text-zinc-300 rounded-lg hover:bg-zinc-800 transition-colors">
-                            View Detailed Logs
-                        </button>
+                        <Link to="/history">
+                            <button className="w-full px-4 py-3 bg-zinc-900 border border-zinc-700 text-zinc-300 rounded-lg hover:bg-zinc-800 transition-colors mt-3">
+                                View History
+                            </button>
+                        </Link>
                     </div>
                 </motion.div>
             </div>

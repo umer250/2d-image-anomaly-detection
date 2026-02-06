@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Upload as UploadIcon, X, Image as ImageIcon, ArrowRight, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
+import { mlAPI } from '../../services/api';
 
 const Upload = () => {
     const navigate = useNavigate();
@@ -69,24 +70,30 @@ const Upload = () => {
         }
     };
 
-    const handleAnalyze = () => {
+    const handleAnalyze = async () => {
         if (!file) return;
 
         setAnalyzing(true);
+        setError('');
 
-        // Simulate analysis delay
-        setTimeout(() => {
+        try {
+            const result = await mlAPI.predict(file);
             setAnalyzing(false);
-            // Navigate to results with mock data
+
             navigate('/results', {
                 state: {
                     image: preview,
                     fileName: file.name,
                     timestamp: new Date().toISOString(),
-                    settings: settings
+                    settings: settings,
+                    analysisResult: result
                 }
             });
-        }, 2000);
+        } catch (err) {
+            console.error("Analysis failed:", err);
+            setError(err.message || "Analysis failed. Please try again.");
+            setAnalyzing(false);
+        }
     };
 
     return (

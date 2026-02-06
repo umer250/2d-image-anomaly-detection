@@ -14,3 +14,4 @@ class Image(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
 
     user = relationship("User", backref="uploaded_images")
+    results = relationship("Result", back_populates="image", cascade="all, delete-orphan")

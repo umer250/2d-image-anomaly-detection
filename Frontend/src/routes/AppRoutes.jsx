@@ -1,13 +1,15 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from '../components/ProtectedRoute';
+import UserLayout from '../components/layout/UserLayout';
+import AdminLayout from '../components/layout/AdminLayout';
 
 // Public Pages
 import Landing from '../pages/shared/Landing';
-import Login from '../pages/shared/Login';
-import Register from '../pages/shared/Register';
+import Auth from '../pages/shared/Auth';
 import ResetPassword from '../pages/shared/ResetPassword';
 import About from '../pages/shared/About';
+import NotFound from '../pages/shared/NotFound';
 
 // User Pages
 import Dashboard from '../pages/user/Dashboard';
@@ -17,56 +19,87 @@ import Upload from '../pages/user/Upload';
 import Results from '../pages/user/Results';
 import History from '../pages/user/History';
 
+// Admin Pages
+import AdminDashboard from '../pages/admin/Dashboard';
+import UserManagement from '../pages/admin/UserManagement';
+import ImageMonitoring from '../pages/admin/ImageMonitoring';
+import Reports from '../pages/admin/Reports';
+import AdminSettings from '../pages/admin/AdminSettings';
+
 const AppRoutes = () => {
     return (
         <Routes>
             {/* Public Routes */}
             <Route path="/" element={<Landing />} />
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
+            <Route path="/login" element={<Auth />} />
+            <Route path="/register" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/about" element={<About />} />
 
             {/* Protected User Routes */}
-            <Route path="/dashboard" element={
-                <ProtectedRoute allowedRoles={['user', 'admin']}>
-                    <Dashboard />
-                </ProtectedRoute>
-            } />
-            <Route path="/profile" element={
-                <ProtectedRoute allowedRoles={['user', 'admin']}>
-                    <Profile />
-                </ProtectedRoute>
-            } />
-            <Route path="/settings" element={
-                <ProtectedRoute allowedRoles={['user', 'admin']}>
-                    <Settings />
-                </ProtectedRoute>
-            } />
-            <Route path="/upload" element={
-                <ProtectedRoute allowedRoles={['user', 'admin']}>
-                    <Upload />
-                </ProtectedRoute>
-            } />
-            <Route path="/results" element={
-                <ProtectedRoute allowedRoles={['user', 'admin']}>
-                    <Results />
-                </ProtectedRoute>
-            } />
-            <Route path="/history" element={
-                <ProtectedRoute allowedRoles={['user', 'admin']}>
-                    <History />
-                </ProtectedRoute>
-            } />
+            <Route element={<UserLayout />}>
+                <Route path="/dashboard" element={
+                    <ProtectedRoute allowedRoles={['user', 'admin']}>
+                        <Dashboard />
+                    </ProtectedRoute>
+                } />
+                <Route path="/profile" element={
+                    <ProtectedRoute allowedRoles={['user', 'admin']}>
+                        <Profile />
+                    </ProtectedRoute>
+                } />
+                <Route path="/settings" element={
+                    <ProtectedRoute allowedRoles={['user', 'admin']}>
+                        <Settings />
+                    </ProtectedRoute>
+                } />
+                <Route path="/upload" element={
+                    <ProtectedRoute allowedRoles={['user', 'admin']}>
+                        <Upload />
+                    </ProtectedRoute>
+                } />
+                <Route path="/results" element={
+                    <ProtectedRoute allowedRoles={['user', 'admin']}>
+                        <Results />
+                    </ProtectedRoute>
+                } />
+                <Route path="/history" element={
+                    <ProtectedRoute allowedRoles={['user', 'admin']}>
+                        <History />
+                    </ProtectedRoute>
+                } />
+            </Route>
 
-            {/* Admin Routes Placeholder */}
-            <Route path="/admin/dashboard" element={
-                <ProtectedRoute allowedRoles={['admin']}>
-                    <Dashboard /> {/* Reusing Dashboard for now */}
-                </ProtectedRoute>
-            } />
+            {/* Protected Admin Routes */}
+            <Route element={<AdminLayout />}>
+                <Route path="/admin/dashboard" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminDashboard />
+                    </ProtectedRoute>
+                } />
+                <Route path="/admin/users" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                        <UserManagement />
+                    </ProtectedRoute>
+                } />
+                <Route path="/admin/images" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                        <ImageMonitoring />
+                    </ProtectedRoute>
+                } />
+                <Route path="/admin/reports" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                        <Reports />
+                    </ProtectedRoute>
+                } />
+                <Route path="/admin/settings" element={
+                    <ProtectedRoute allowedRoles={['admin']}>
+                        <AdminSettings />
+                    </ProtectedRoute>
+                } />
+            </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<NotFound />} />
         </Routes>
     );
 };

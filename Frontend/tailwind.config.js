@@ -14,6 +14,9 @@ export default {
         card: '#09090b',
         'card-foreground': '#ffffff',
         border: '#27272a',
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
       }
     },
   },

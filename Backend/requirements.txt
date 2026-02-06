@@ -10,8 +10,9 @@ pydantic==2.5.3
 pydantic-settings==2.1.0
 python-dotenv==1.0.1
 httpx==0.26.0
-# tensorflow-cpu==2.15.0  # Or tensorflow-gpu if available, using CPU for portability
-# numpy==1.26.3
-# pillow==10.2.0
+tensorflow-cpu==2.16.1; sys_platform != 'darwin' or platform_machine != 'arm64'
+tensorflow-macos==2.16.1; sys_platform == 'darwin' and platform_machine == 'arm64'
+numpy==1.26.3
+pillow==10.2.0
 
 
