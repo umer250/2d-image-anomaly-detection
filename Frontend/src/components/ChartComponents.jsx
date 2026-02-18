@@ -6,23 +6,23 @@ import {
     YAxis,
     CartesianGrid,
     Tooltip,
-    Legend,
     ResponsiveContainer,
     LineChart,
     Line,
     PieChart,
     Pie,
-    Cell
+    Cell,
+    Legend
 } from 'recharts';
 
-const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
+const COLORS = ['#EF4444', '#F59E0B', '#10B981', '#3B82F6'];
 
 const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
         return (
-            <div className="bg-zinc-900 border border-zinc-700 p-3 rounded shadow-xl">
-                <p className="text-zinc-400 text-xs mb-1">{label}</p>
-                <p className="text-white font-bold text-sm">
+            <div style={{ fontFamily: "'Inter', sans-serif" }} className="bg-zinc-900 border border-zinc-700 px-4 py-3 rounded-xl shadow-2xl">
+                <p className="text-zinc-400 text-xs font-semibold mb-1">{label}</p>
+                <p className="text-white font-black text-lg" style={{ fontFamily: "'Outfit', sans-serif" }}>
                     {payload[0].value}
                 </p>
             </div>
@@ -31,72 +31,109 @@ const CustomTooltip = ({ active, payload, label }) => {
     return null;
 };
 
+// Daily Inspections Line Chart
+// Expects data: [{ name: 'Mon', count: 3 }, ...]  (from /users/dashboard)
 export const DailyInspectionsChart = ({ data }) => (
-    <div className="h-80 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-            <LineChart
-                data={data}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-            >
-                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                <XAxis dataKey="date" stroke="#71717a" />
-                <YAxis stroke="#71717a" />
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-                <Line type="monotone" dataKey="total" stroke="#3b82f6" activeDot={{ r: 8 }} name="Total Inspections" strokeWidth={2} />
-                <Line type="monotone" dataKey="anomalies" stroke="#ef4444" name="Anomalies" strokeWidth={2} />
-            </LineChart>
-        </ResponsiveContainer>
-    </div>
+    <ResponsiveContainer width="100%" height="100%">
+        <LineChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+            <XAxis
+                dataKey="name"
+                stroke="#52525b"
+                tick={{ fill: '#71717a', fontSize: 11, fontFamily: "'Inter', sans-serif" }}
+                axisLine={false}
+                tickLine={false}
+            />
+            <YAxis
+                stroke="#52525b"
+                tick={{ fill: '#71717a', fontSize: 11, fontFamily: "'Inter', sans-serif" }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+            />
+            <Tooltip content={<CustomTooltip />} />
+            <Line
+                type="monotone"
+                dataKey="count"
+                stroke="#3b82f6"
+                strokeWidth={2.5}
+                dot={{ fill: '#3b82f6', r: 4, strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: '#60a5fa', strokeWidth: 0 }}
+                name="Inspections"
+            />
+        </LineChart>
+    </ResponsiveContainer>
 );
 
+// Anomaly Distribution Pie Chart
+// Expects data: [{ name: 'Minor', value: 5 }, { name: 'Major', value: 2 }, ...]
 export const AnomalyDistributionChart = ({ data }) => (
-    <div className="h-80 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-                <Pie
-                    data={data}
-                    cx="50%"
-                    cy="50%"
-                    labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    outerRadius={80}
-                    fill="#8884d8"
-                    dataKey="value"
-                >
-                    {data.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="#09090b" />
-                    ))}
-                </Pie>
-                <Tooltip content={<CustomTooltip />} />
-                <Legend />
-            </PieChart>
-        </ResponsiveContainer>
-    </div>
+    <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+            <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={60}
+                outerRadius={100}
+                paddingAngle={4}
+                dataKey="value"
+            >
+                {data.map((entry, index) => (
+                    <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                        stroke="transparent"
+                    />
+                ))}
+            </Pie>
+            <Tooltip content={<CustomTooltip />} />
+            <Legend
+                iconType="circle"
+                iconSize={8}
+                formatter={(value) => (
+                    <span style={{ color: '#a1a1aa', fontSize: '11px', fontFamily: "'Inter', sans-serif" }}>
+                        {value}
+                    </span>
+                )}
+            />
+        </PieChart>
+    </ResponsiveContainer>
 );
 
+// Normal vs Anomaly Bar Chart
+// Expects data: [{ name: 'Normal', value: 10 }, { name: 'Anomaly', value: 4 }]
 export const NormalVsAnomalyChart = ({ data }) => {
-    // Transform data for bar chart if needed, or use existing structure
-    const chartData = [
-        { name: 'Normal', value: data.normalImages, fill: '#22c55e' },
-        { name: 'Anomaly', value: data.anomaliesDetected, fill: '#ef4444' },
-    ];
+    const FILL_COLORS = { Normal: '#10b981', Anomaly: '#ef4444' };
 
     return (
-        <div className="h-80 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                    data={chartData}
-                    margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-                >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
-                    <XAxis dataKey="name" stroke="#71717a" />
-                    <YAxis stroke="#71717a" />
-                    <Tooltip cursor={{ fill: '#27272a', opacity: 0.5 }} content={<CustomTooltip />} />
-                    <Legend />
-                    <Bar dataKey="value" name="Count" radius={[4, 4, 0, 0]} />
-                </BarChart>
-            </ResponsiveContainer>
-        </div>
+        <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={48}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+                <XAxis
+                    dataKey="name"
+                    stroke="#52525b"
+                    tick={{ fill: '#71717a', fontSize: 11, fontFamily: "'Inter', sans-serif" }}
+                    axisLine={false}
+                    tickLine={false}
+                />
+                <YAxis
+                    stroke="#52525b"
+                    tick={{ fill: '#71717a', fontSize: 11, fontFamily: "'Inter', sans-serif" }}
+                    axisLine={false}
+                    tickLine={false}
+                    allowDecimals={false}
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.03)' }} />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]}>
+                    {data.map((entry, index) => (
+                        <Cell
+                            key={`cell-${index}`}
+                            fill={FILL_COLORS[entry.name] || COLORS[index % COLORS.length]}
+                        />
+                    ))}
+                </Bar>
+            </BarChart>
+        </ResponsiveContainer>
     );
 };
