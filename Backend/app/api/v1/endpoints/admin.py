@@ -166,50 +166,73 @@ def get_analytics(
     from datetime import datetime, timedelta
     
     try:
-        total_users = len(crud_user.get_all_users(db, skip=0, limit=10000))
+        total_users = db.query(User).count()
         total_images = db.query(Image).count()
         total_anomalies = db.query(Result).filter(Result.is_anomaly == True).count()
-        logging.info(f"get_analytics: Stats fetched - Users: {total_users}, Images: {total_images}, Anomalies: {total_anomalies}")
         
-        # Daily History (Last 7 Days)
-        today = datetime.now().date()
-        seven_days_ago = today - timedelta(days=6)
-        daily_stats = db.query(
-            func.date(Image.upload_date).label('day'),
-            func.count(Image.id).label('count')
-        ).filter(Image.upload_date >= seven_days_ago).group_by(func.date(Image.upload_date)).all()
-        
-        history_map = {str(s.day): s.count for s in daily_stats}
-        weekly_activity = []
-        for i in range(7):
-            day = seven_days_ago + timedelta(days=i)
-            weekly_activity.append(history_map.get(str(day), 0))
+        # 1. Hourly Activity (Last 24 Hours)
+        daily_activity = []
+        now = datetime.now()
+        for i in range(23, -1, -1):
+            target_time = now - timedelta(hours=i)
+            count = db.query(Image).filter(
+                func.extract('hour', Image.upload_date) == target_time.hour,
+                func.extract('day', Image.upload_date) == target_time.day,
+                func.extract('month', Image.upload_date) == target_time.month,
+                func.extract('year', Image.upload_date) == target_time.year
+            ).count()
+            daily_activity.append(count)
 
-        # Monthly History (Placeholder)
-        monthly_activity = [0] * 12
-        
-        # Anomaly Trends (Last 12 intervals)
-        recent_results = db.query(Result).order_by(Result.created_at.desc()).limit(100).all()
-        trend_data = [0] * 12
-        if recent_results:
-            import math
-            chunk_size = math.ceil(len(recent_results) / 12)
-            for i in range(12):
-                start = i * chunk_size
-                end = start + chunk_size
-                chunk = recent_results[start:end]
-                anomalies = sum(1 for r in chunk if r.is_anomaly)
-                trend_data[i] = anomalies * 5
+        # 2. Weekly Activity (Last 7 Days)
+        weekly_activity = []
+        for i in range(6, -1, -1):
+            day = (now - timedelta(days=i)).date()
+            count = db.query(Image).filter(func.date(Image.upload_date) == day).count()
+            weekly_activity.append(count)
+
+        # 3. Monthly Activity (Last 12 Months)
+        monthly_activity = []
+        for i in range(11, -1, -1):
+            month = (now.month - i - 1) % 12 + 1
+            year = now.year + (now.month - i - 1) // 12
+            count = db.query(Image).filter(
+                func.extract('month', Image.upload_date) == month,
+                func.extract('year', Image.upload_date) == year
+            ).count()
+            monthly_activity.append(count)
+
+        # 4. Anomaly Trends (Last 12 Months)
+        anomaly_trends = []
+        for i in range(11, -1, -1):
+            month = (now.month - i - 1) % 12 + 1
+            year = now.year + (now.month - i - 1) // 12
+            count = db.query(Result).join(Image).filter(
+                Result.is_anomaly == True,
+                func.extract('month', Image.upload_date) == month,
+                func.extract('year', Image.upload_date) == year
+            ).count()
+            anomaly_trends.append(count)
+
+        # 5. Type Distribution
+        critical = db.query(Result).filter(Result.anomaly_score >= 0.85).count()
+        minor = db.query(Result).filter(Result.anomaly_score >= 0.6, Result.anomaly_score < 0.85).count()
+        noise = db.query(Result).filter(Result.anomaly_score < 0.6).count()
 
         return {
             "total_users": total_users,
             "total_images": total_images,
             "total_anomalies_detected": total_anomalies,
-            "active_users": total_users,
+            "active_users": db.query(User).filter(User.is_active == True).count(),
+            "daily_activity": daily_activity,
             "weekly_activity": weekly_activity,
             "monthly_activity": monthly_activity,
-            "anomaly_trends": trend_data,
-            "model_version": "v1.0"
+            "anomaly_trends": anomaly_trends,
+            "type_distribution": {
+                "critical": critical,
+                "minor": minor,
+                "noise": noise
+            },
+            "model_version": "v2.5.0-LTS"
         }
     except Exception as e:
         import traceback

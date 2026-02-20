@@ -13,4 +13,7 @@ class User(Base):
     is_active = Column(Boolean(), default=True)
     is_superuser = Column(Boolean(), default=False)
     role = Column(String, default="user")  # "admin" or "user"
+    avatar_url = Column(String, nullable=True)
+    reset_token = Column(String, index=True, nullable=True)
+    reset_token_expiry = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

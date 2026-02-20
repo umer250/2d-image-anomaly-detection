@@ -1,22 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import {
+    Search,
+    Filter,
+    Image as ImageIcon,
+    AlertTriangle,
+    CheckCircle,
+    Maximize2,
+    X,
+    Calendar,
+    ChevronLeft,
+    ChevronRight,
+    TrendingUp,
+    Shield,
+    Activity
+} from 'lucide-react';
 import { adminAPI } from '../../services/api';
-import { Image as ImageIcon, Eye, Search, AlertTriangle, CheckCircle } from 'lucide-react';
 import clsx from 'clsx';
+
+const API_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
 
 const ImageMonitoring = () => {
     const [images, setImages] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [filter, setFilter] = useState('all'); // 'all' | 'defect' | 'normal'
+    const [filter, setFilter] = useState('all');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [showHeatmap, setShowHeatmap] = useState(false);
+    const [confidenceThreshold, setConfidenceThreshold] = useState(70);
+    const [showAdvanced, setShowAdvanced] = useState(false);
 
     useEffect(() => {
         const fetchImages = async () => {
             try {
-                const data = await adminAPI.getImages();
-                setImages(data.images || []);
+                const response = await adminAPI.getImages();
+                setImages(response.images || []);
             } catch (error) {
-                console.error("ImageMonitoring: Failed to fetch images:", error);
+                console.error("ImageMonitoring: Error fetching images:", error);
             } finally {
                 setLoading(false);
             }
@@ -24,243 +43,342 @@ const ImageMonitoring = () => {
         fetchImages();
     }, []);
 
+    const defectCount = images.filter(i => i.results?.[0]?.is_anomaly).length;
+    const passedCount = images.filter(i => !i.results?.[0]?.is_anomaly).length;
+
     const filteredImages = images.filter(img => {
-        const matchesSearch = img.filename.toLowerCase().includes(searchTerm.toLowerCase());
-        const isAnomaly = img.results && img.results[0]?.is_anomaly;
-        if (filter === 'defect') return matchesSearch && isAnomaly;
-        if (filter === 'normal') return matchesSearch && !isAnomaly;
-        return matchesSearch;
+        const filename = img.filename || "Unknown Image";
+        const matchesSearch = filename.toLowerCase().includes(searchQuery.toLowerCase());
+        const isAnomaly = img.results?.[0]?.is_anomaly;
+        const matchesFilter =
+            filter === 'all' ||
+            (filter === 'defect' && isAnomaly) ||
+            (filter === 'passed' && !isAnomaly);
+
+        return matchesSearch && matchesFilter;
     });
 
-    const defectCount = images.filter(img => img.results && img.results[0]?.is_anomaly).length;
-    const normalCount = images.length - defectCount;
-
-    const getBaseURL = () => {
-        const apiURL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
-        return apiURL.replace('/api/v1', '');
+    const getFullImageUrl = (path) => {
+        if (!path) return '';
+        if (path.startsWith('http')) return path;
+        return `${API_BASE_URL}/${path.replace(/\\/g, '/')}`;
     };
 
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[60vh]">
+                <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
+        );
+    }
+
     return (
-        <div className="space-y-6" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-
-            {/* Header */}
-            <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex flex-col md:flex-row md:items-center justify-between gap-4"
-            >
+        <div className="space-y-8 pb-12 animate-in fade-in duration-500">
+            {/* Header Section */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                 <div>
-                    <h1
-                        className="text-3xl font-extrabold text-white tracking-tight flex items-center gap-3"
-                        style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}
-                    >
-                        <ImageIcon className="text-purple-400" size={30} />
-                        Image Defect Log
+                    <h1 className="text-xl font-bold text-white tracking-tight">
+                        Image Monitoring Log
                     </h1>
-                    <p className="text-zinc-500 text-sm mt-1">All inspected images with defect analysis results</p>
+                    <p className="text-slate-400 text-xs mt-1">
+                        Track and audit hardware inspections in real-time.
+                    </p>
                 </div>
 
-                {/* Summary Badges */}
-                <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/20 px-4 py-2.5 rounded-xl">
-                        <AlertTriangle size={14} className="text-red-400" />
-                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Defects</span>
-                        <span
-                            className="text-xl font-black text-red-400 ml-1"
-                            style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}
-                        >{defectCount}</span>
-                    </div>
-                    <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 px-4 py-2.5 rounded-xl">
-                        <CheckCircle size={14} className="text-emerald-400" />
-                        <span className="text-xs font-bold text-zinc-500 uppercase tracking-widest">Passed</span>
-                        <span
-                            className="text-xl font-black text-emerald-400 ml-1"
-                            style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}
-                        >{normalCount}</span>
-                    </div>
-                </div>
-            </motion.div>
-
-            {/* Search & Filter Bar */}
-            <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.1 }}
-                className="flex flex-col sm:flex-row items-center gap-4"
-            >
-                <div className="relative flex-1 w-full group">
-                    <Search
-                        className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-purple-400 transition-colors"
-                        size={18}
-                    />
-                    <input
-                        type="text"
-                        placeholder="Search by filename..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="w-full bg-zinc-900/60 border border-zinc-800 rounded-xl py-3 pl-11 pr-5 text-sm text-white focus:outline-none focus:border-purple-500/50 transition-all placeholder:text-zinc-600"
-                    />
-                </div>
-
-                {/* Filter Tabs */}
-                <div className="flex items-center gap-1 bg-zinc-900 border border-zinc-800 rounded-xl p-1 shrink-0">
-                    {[
-                        { key: 'all', label: 'All' },
-                        { key: 'defect', label: 'Defects' },
-                        { key: 'normal', label: 'Passed' },
-                    ].map(({ key, label }) => (
-                        <button
-                            key={key}
-                            onClick={() => setFilter(key)}
-                            className={clsx(
-                                "px-4 py-2 text-xs font-bold rounded-lg transition-all",
-                                filter === key
-                                    ? key === 'defect'
-                                        ? 'bg-red-500/20 text-red-400 border border-red-500/30'
-                                        : key === 'normal'
-                                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                            : 'bg-zinc-700 text-white'
-                                    : 'text-zinc-500 hover:text-zinc-300'
-                            )}
-                        >
-                            {label}
-                        </button>
-                    ))}
-                </div>
-            </motion.div>
-
-            {/* Image Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {loading ? (
-                    Array(8).fill(0).map((_, i) => (
-                        <div
-                            key={i}
-                            className="bg-zinc-900/50 rounded-2xl animate-pulse border border-zinc-800 h-72"
+                <div className="flex items-center gap-4">
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                        <input
+                            type="text"
+                            placeholder="Search by filename..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="bg-slate-900/50 border border-slate-800 rounded-lg py-2 pl-9 pr-4 text-xs text-white outline-none focus:border-blue-500/50 w-64 transition-all"
                         />
-                    ))
-                ) : filteredImages.length === 0 ? (
-                    <div className="col-span-full py-24 text-center flex flex-col items-center justify-center bg-zinc-900/30 rounded-2xl border border-dashed border-zinc-800">
-                        <ImageIcon size={48} className="text-zinc-700 mb-4" />
-                        <h3
-                            className="text-lg font-bold text-white mb-1"
-                            style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}
-                        >
-                            No Images Found
-                        </h3>
-                        <p className="text-zinc-500 text-sm max-w-xs">
-                            {searchTerm
-                                ? 'No images match your search.'
-                                : 'No images have been uploaded yet.'}
+                    </div>
+                    <button
+                        onClick={() => setShowAdvanced(!showAdvanced)}
+                        className={clsx(
+                            "p-2 rounded-lg border transition-all",
+                            showAdvanced ? "bg-blue-600/10 border-blue-500/50 text-blue-400" : "bg-slate-800 border-slate-700 text-slate-400 hover:text-slate-200"
+                        )}
+                    >
+                        <Filter size={16} />
+                    </button>
+                </div>
+            </div>
+
+            {/* Top Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-red-500/10 text-red-500">
+                        <AlertTriangle size={18} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Defects</p>
+                        <p className="text-lg font-bold text-white">{defectCount}</p>
+                    </div>
+                </div>
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-green-500/10 text-green-500">
+                        <CheckCircle size={18} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Passed Units</p>
+                        <p className="text-lg font-bold text-white">{passedCount}</p>
+                    </div>
+                </div>
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-blue-500/10 text-blue-500">
+                        <ImageIcon size={18} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Logs</p>
+                        <p className="text-lg font-bold text-white">{images.length}</p>
+                    </div>
+                </div>
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4 flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-amber-500/10 text-amber-500">
+                        <Activity size={18} />
+                    </div>
+                    <div>
+                        <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Defect Rate</p>
+                        <p className="text-lg font-bold text-white">
+                            {images.length > 0 ? ((defectCount / images.length) * 100).toFixed(1) : 0}%
                         </p>
                     </div>
-                ) : filteredImages.map((img, idx) => {
-                    const isAnomaly = img.results && img.results[0]?.is_anomaly;
-                    const score = img.results && img.results[0]
-                        ? (img.results[0].anomaly_score * 100).toFixed(1)
-                        : null;
-
-                    return (
-                        <motion.div
-                            key={img.id}
-                            initial={{ opacity: 0, y: 16 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.04 }}
-                            whileHover={{ y: -4 }}
-                            className={clsx(
-                                "group bg-zinc-900/40 rounded-2xl border overflow-hidden transition-all duration-300 shadow-lg",
-                                isAnomaly
-                                    ? 'border-red-500/20 hover:border-red-500/40 hover:shadow-red-500/10 hover:shadow-xl'
-                                    : 'border-emerald-500/20 hover:border-emerald-500/40 hover:shadow-emerald-500/10 hover:shadow-xl'
-                            )}
-                        >
-                            {/* Image Thumbnail */}
-                            <div className="aspect-video bg-zinc-950 relative overflow-hidden">
-                                {img.file_path ? (
-                                    <img
-                                        src={`${getBaseURL()}/${img.file_path}`}
-                                        alt={img.filename}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                                        onError={(e) => {
-                                            e.target.onerror = null;
-                                            e.target.src = 'https://via.placeholder.com/400x225?text=Unavailable';
-                                        }}
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <ImageIcon className="text-zinc-700" size={40} />
-                                    </div>
-                                )}
-
-                                {/* Defect / Passed Badge */}
-                                <div className="absolute top-3 left-3">
-                                    <span className={clsx(
-                                        "inline-flex items-center gap-1.5 text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest border backdrop-blur-md",
-                                        isAnomaly
-                                            ? 'bg-red-500/30 text-red-300 border-red-500/40'
-                                            : 'bg-emerald-500/30 text-emerald-300 border-emerald-500/40'
-                                    )}>
-                                        <span className={clsx(
-                                            "w-1.5 h-1.5 rounded-full",
-                                            isAnomaly ? 'bg-red-400' : 'bg-emerald-400'
-                                        )} />
-                                        {isAnomaly ? 'Defect' : 'Passed'}
-                                    </span>
-                                </div>
-                            </div>
-
-                            {/* Card Body */}
-                            <div className="p-4">
-                                <h4
-                                    className="text-sm font-semibold text-white truncate mb-3"
-                                    title={img.filename}
-                                >
-                                    {img.filename}
-                                </h4>
-
-                                <div className="flex items-end justify-between">
-                                    {/* Score */}
-                                    <div>
-                                        <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-widest mb-0.5">
-                                            {isAnomaly ? 'Defect Score' : 'Confidence'}
-                                        </p>
-                                        <p
-                                            className={clsx(
-                                                "text-2xl font-black leading-none",
-                                                isAnomaly ? 'text-red-400' : 'text-emerald-400'
-                                            )}
-                                            style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}
-                                        >
-                                            {score !== null ? `${score}%` : '—'}
-                                        </p>
-                                    </div>
-
-                                    {/* View Button */}
-                                    <motion.button
-                                        whileHover={{ scale: 1.1 }}
-                                        whileTap={{ scale: 0.9 }}
-                                        className="p-2.5 bg-white/5 text-zinc-400 rounded-xl hover:bg-white hover:text-black transition-all border border-white/5"
-                                        title="View Details"
-                                    >
-                                        <Eye size={16} />
-                                    </motion.button>
-                                </div>
-
-                                {/* Footer */}
-                                <div className="mt-3 pt-3 border-t border-zinc-800 flex justify-between items-center">
-                                    <span className="text-[10px] text-zinc-600 font-mono">
-                                        #{String(img.id).padStart(5, '0')}
-                                    </span>
-                                    <span className="text-[10px] text-zinc-500">
-                                        {new Date(img.upload_date).toLocaleDateString(undefined, {
-                                            month: 'short', day: 'numeric', year: 'numeric'
-                                        })}
-                                    </span>
-                                </div>
-                            </div>
-                        </motion.div>
-                    );
-                })}
+                </div>
             </div>
+
+            {/* Filters Row */}
+            <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between">
+                    <div className="flex bg-slate-900/50 rounded-lg p-1 border border-slate-800">
+                        {['all', 'defect', 'passed'].map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => setFilter(f)}
+                                className={clsx(
+                                    "px-4 py-1.5 text-[10px] font-bold uppercase rounded-md transition-all",
+                                    filter === f ? "bg-slate-700 text-white shadow-sm" : "text-slate-500 hover:text-slate-300"
+                                )}
+                            >
+                                {f === 'defect' ? 'Anomalies' : f.charAt(0).toUpperCase() + f.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {showAdvanced && (
+                    <div className="bg-slate-900/20 border border-slate-800 rounded-xl p-5 flex flex-wrap items-center gap-8 animate-in slide-in-from-top-2 duration-300">
+                        <div className="flex items-center gap-4">
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Confidence Threshold</label>
+                            <div className="flex items-center gap-3">
+                                <input
+                                    type="range"
+                                    min="50" max="99"
+                                    value={confidenceThreshold}
+                                    onChange={(e) => setConfidenceThreshold(parseInt(e.target.value))}
+                                    className="w-40 h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                />
+                                <span className="text-xs font-mono text-blue-400 font-bold">{confidenceThreshold}%</span>
+                            </div>
+                        </div>
+                        <div className="h-4 w-px bg-slate-800"></div>
+                        <div className="flex items-center gap-2">
+                            <Shield size={14} className="text-slate-500" />
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Log Policy: Auto-Purge 30d</span>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Image Grid */}
+            {filteredImages.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                    {filteredImages.map((img) => {
+                        const isAnomaly = img.results?.[0]?.is_anomaly;
+                        const score = (img.results?.[0]?.anomaly_score || 0) * 100;
+
+                        return (
+                            <div
+                                key={img.id}
+                                className="bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden group shadow-sm hover:border-slate-700 transition-all flex flex-col relative"
+                            >
+                                {/* Thumbnail Section */}
+                                <div className="relative aspect-[4/3] overflow-hidden bg-black">
+                                    <img
+                                        src={getFullImageUrl(img.file_path)}
+                                        alt={img.filename}
+                                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
+                                    />
+
+                                    {/* Status Badge at Top-Right */}
+                                    <div className={clsx(
+                                        "absolute top-3 right-3 px-2 py-0.5 rounded text-[9px] font-bold uppercase shadow-lg flex items-center gap-1.5 backdrop-blur-md border",
+                                        isAnomaly ? "bg-red-500/20 text-red-400 border-red-500/20" : "bg-green-500/20 text-green-400 border-green-500/20"
+                                    )}>
+                                        {isAnomaly ? <AlertTriangle size={10} /> : <CheckCircle size={10} />}
+                                        {isAnomaly ? 'Anomaly' : 'Passed'}
+                                    </div>
+
+                                    {/* Hover Overlay */}
+                                    <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <button
+                                            onClick={() => setSelectedImage(img)}
+                                            className="bg-white text-slate-950 px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-tight shadow-xl transform translate-y-2 group-hover:translate-y-0 transition-all duration-300"
+                                        >
+                                            View Details
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Content Section */}
+                                <div className="p-4 space-y-3">
+                                    <div className="flex justify-between items-start gap-2">
+                                        <p className="text-[11px] font-semibold text-slate-200 truncate flex-1 uppercase tracking-tight">
+                                            {img.filename}
+                                        </p>
+                                        <div className="flex items-center gap-1 text-slate-500">
+                                            <Calendar size={10} />
+                                            <span className="text-[9px] font-medium">{new Date(img.upload_date).toLocaleDateString()}</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Confidence Progress Bar */}
+                                    <div className="space-y-1.5">
+                                        <div className="flex justify-between text-[9px]">
+                                            <span className="text-slate-500 uppercase font-bold tracking-wider">Confidence</span>
+                                            <span className={clsx("font-bold", score > 90 ? "text-green-400" : score > 70 ? "text-blue-400" : "text-amber-400")}>
+                                                {score.toFixed(1)}%
+                                            </span>
+                                        </div>
+                                        <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
+                                            <div
+                                                className={clsx(
+                                                    "h-full rounded-full transition-all duration-1000",
+                                                    isAnomaly ? "bg-red-500" : "bg-blue-500"
+                                                )}
+                                                style={{ width: `${score}%` }}
+                                            ></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            ) : (
+                <div className="flex flex-col items-center justify-center py-24 bg-slate-900/20 rounded-2xl border border-dashed border-slate-800">
+                    <div className="p-4 rounded-full bg-slate-800/50 mb-4">
+                        <ImageIcon className="text-slate-600" size={32} />
+                    </div>
+                    <p className="text-slate-400 text-sm font-medium">No results found matching your criteria</p>
+                    <button
+                        onClick={() => { setSearchQuery(''); setFilter('all'); }}
+                        className="mt-4 text-blue-400 text-xs font-bold uppercase hover:underline"
+                    >
+                        Clear Filters
+                    </button>
+                </div>
+            )}
+
+            {/* Modal Inspector */}
+            {selectedImage && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setSelectedImage(null)}></div>
+                    <div className="relative bg-slate-900 border border-slate-800 rounded-2xl max-w-5xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in zoom-in-95 duration-300">
+                        <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-900/50">
+                            <div>
+                                <h2 className="text-base font-bold text-white uppercase tracking-tight">{selectedImage.filename}</h2>
+                                <p className="text-[10px] text-slate-500 font-mono mt-0.5">ID: {selectedImage.id}</p>
+                            </div>
+                            <button onClick={() => setSelectedImage(null)} className="p-2 hover:bg-slate-800 rounded-full text-slate-500 transition-all">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 flex flex-col lg:flex-row gap-8">
+                            <div className="flex-1 space-y-4">
+                                <div className="relative rounded-xl overflow-hidden bg-black aspect-video border border-slate-800 group">
+                                    <img
+                                        src={showHeatmap && selectedImage.results?.[0]?.heatmap_path
+                                            ? getFullImageUrl(selectedImage.results[0].heatmap_path)
+                                            : getFullImageUrl(selectedImage.file_path)
+                                        }
+                                        alt="Preview"
+                                        className="w-full h-full object-contain"
+                                    />
+                                    {selectedImage.results?.[0]?.heatmap_path && (
+                                        <div className="absolute bottom-4 right-4 bg-slate-900/90 backdrop-blur-md p-1 rounded-lg flex border border-slate-800">
+                                            <button
+                                                onClick={() => setShowHeatmap(false)}
+                                                className={clsx("px-4 py-1.5 text-[9px] font-bold uppercase rounded transition-all", !showHeatmap ? "bg-blue-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-200")}
+                                            >Original</button>
+                                            <button
+                                                onClick={() => setShowHeatmap(true)}
+                                                className={clsx("px-4 py-1.5 text-[9px] font-bold uppercase rounded transition-all", showHeatmap ? "bg-red-600 text-white shadow-sm" : "text-slate-400 hover:text-slate-200")}
+                                            >Heatmap</button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="w-full lg:w-80 space-y-6">
+                                <div className="bg-slate-950/40 rounded-xl p-6 border border-slate-800">
+                                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-6">Inference Result</h4>
+                                    <div className="space-y-5">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Status</span>
+                                            <span className={clsx(
+                                                "px-2.5 py-1 rounded-md text-[10px] font-bold uppercase border",
+                                                selectedImage.results?.[0]?.is_anomaly ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-green-500/10 text-green-400 border-green-500/20"
+                                            )}>
+                                                {selectedImage.results?.[0]?.is_anomaly ? 'Anomaly' : 'NORMAL'}
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Confidence Score</span>
+                                                <span className="text-xl font-bold text-white font-mono">
+                                                    {((selectedImage.results?.[0]?.anomaly_score || 0) * 100).toFixed(2)}%
+                                                </span>
+                                            </div>
+                                            <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                <div
+                                                    className={clsx("h-full", selectedImage.results?.[0]?.is_anomaly ? "bg-red-500" : "bg-blue-500")}
+                                                    style={{ width: `${(selectedImage.results?.[0]?.anomaly_score || 0) * 100}%` }}
+                                                ></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="bg-slate-950/40 rounded-xl p-6 border border-slate-800">
+                                    <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Metadata</h4>
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between text-[10px]">
+                                            <span className="text-slate-500 font-bold uppercase tracking-wider">Upload Date</span>
+                                            <span className="text-slate-300">{new Date(selectedImage.upload_date).toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between text-[10px]">
+                                            <span className="text-slate-500 font-bold uppercase tracking-wider">User Account ID</span>
+                                            <span className="text-slate-300 font-mono">{selectedImage.user_id}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg text-[10px] font-bold uppercase tracking-tight shadow-lg shadow-blue-500/10 transition-all border border-blue-500/50"
+                                    onClick={() => window.print()}
+                                >
+                                    Generate Inspection Report
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

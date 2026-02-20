@@ -117,26 +117,6 @@ const Login = () => {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center">
-                                <input
-                                    id="remember-me"
-                                    name="remember-me"
-                                    type="checkbox"
-                                    className="h-4 w-4 text-white focus:ring-white border-zinc-700 rounded bg-zinc-800"
-                                />
-                                <label htmlFor="remember-me" className="ml-2 block text-sm text-zinc-300">
-                                    Remember me
-                                </label>
-                            </div>
-
-                            <div className="text-sm">
-                                <Link to="/reset-password" className="font-medium text-zinc-400 hover:text-white">
-                                    Forgot your password?
-                                </Link>
-                            </div>
-                        </div>
-
                         <div>
                             <button
                                 type="submit"
@@ -155,6 +135,11 @@ const Login = () => {
                                     </>
                                 )}
                             </button>
+                            <div className="mt-4 text-center">
+                                <Link to="/forgot-password" size={14} className="font-medium text-zinc-400 hover:text-white text-sm">
+                                    Forgot your password?
+                                </Link>
+                            </div>
                         </div>
                     </form>
 
@@ -177,10 +162,10 @@ const Login = () => {
                                         <AlertCircle className="h-5 w-5 text-zinc-400" aria-hidden="true" />
                                     </div>
                                     <div className="ml-3">
-                                        <h3 className="text-sm font-medium text-white">For Demo Access:</h3>
+                                        <h3 className="text-sm font-medium text-white">For Demo Access:Both Admin and User Dashboard</h3>
                                         <div className="mt-2 text-sm text-zinc-400">
                                             <p>Email: admin@example.com</p>
-                                            <p>Password: any password</p>
+                                            <p>Password: Admin@123</p>
                                         </div>
                                     </div>
                                 </div>

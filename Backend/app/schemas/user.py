@@ -8,6 +8,7 @@ class UserBase(BaseModel):
     is_active: Optional[bool] = True
     is_superuser: bool = False
     full_name: Optional[str] = None
+    avatar_url: Optional[str] = None
     role: str = "user"
 
 # Properties to receive via API on creation
@@ -18,6 +19,7 @@ class UserCreate(UserBase):
 # Properties to receive via API on update
 class UserUpdate(UserBase):
     password: Optional[str] = None
+    avatar_url: Optional[str] = None
 
 class UserInDBBase(UserBase):
     id: Optional[int] = None
@@ -32,3 +34,13 @@ class User(UserInDBBase):
 # Additional properties stored in DB
 class UserInDB(UserInDBBase):
     hashed_password: str
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordConfirm(BaseModel):
+    token: str
+    new_password: str
+
+class VerifyPassword(BaseModel):
+    password: str

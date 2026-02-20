@@ -7,8 +7,52 @@
 
 @layer base {
   body {
-    @apply bg-black text-white antialiased;
+    @apply bg-[#0f172a] text-slate-200 antialiased;
     font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .glass-card {
+    @apply bg-[#1e293b]/80 backdrop-blur-md border border-slate-700/50 shadow-xl transition-all duration-300;
+  }
+
+  .glass-card:hover {
+    @apply border-blue-500/30 shadow-[0_0_20px_rgba(59, 130, 246, 0.15)] -translate-y-1;
+  }
+
+  .accent-blue {
+    color: #3b82f6;
+  }
+
+  .accent-green {
+    color: #22c55e;
+  }
+
+  .accent-red {
+    color: #ef4444;
+  }
+
+  .bg-accent-blue {
+    background-color: #3b82f6;
+  }
+
+  .bg-accent-green {
+    background-color: #22c55e;
+  }
+
+  .bg-accent-red {
+    background-color: #ef4444;
+  }
+
+  .border-accent-blue {
+    border-color: #3b82f6;
+  }
+
+  .border-accent-green {
+    border-color: #22c55e;
+  }
+
+  .border-accent-red {
+    border-color: #ef4444;
   }
 
   h1,

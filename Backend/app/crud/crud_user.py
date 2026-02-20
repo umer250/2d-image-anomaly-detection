@@ -1,6 +1,6 @@
 
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List, Optional, Any
 from app.models.user import User
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import get_password_hash
@@ -73,13 +73,45 @@ def update_user_password(db: Session, user_id: int, new_password: str) -> Option
     db.refresh(db_user)
     return db_user
 
-def update_user_profile(db: Session, user_id: int, full_name: str) -> Optional[User]:
-    """Update user profile (name only)."""
+def update_user_profile(db: Session, user_id: int, full_name: Optional[str] = None, avatar_url: Optional[str] = None) -> Optional[User]:
+    """Update user profile (name and avatar)."""
     db_user = get_user(db, user_id)
     if not db_user:
         return None
     
-    db_user.full_name = full_name
+    if full_name:
+        db_user.full_name = full_name
+    if avatar_url:
+        db_user.avatar_url = avatar_url
+        
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def set_user_reset_token(db: Session, user_id: int, token: str, expiry: Any) -> Optional[User]:
+    """Set reset token for a user."""
+    db_user = get_user(db, user_id)
+    if not db_user:
+        return None
+    
+    db_user.reset_token = token
+    db_user.reset_token_expiry = expiry
+    db.commit()
+    db.refresh(db_user)
+    return db_user
+
+def get_user_by_reset_token(db: Session, token: str) -> Optional[User]:
+    """Get user by reset token."""
+    return db.query(User).filter(User.reset_token == token).first()
+
+def clear_user_reset_token(db: Session, user_id: int) -> Optional[User]:
+    """Clear reset token for a user."""
+    db_user = get_user(db, user_id)
+    if not db_user:
+        return None
+    
+    db_user.reset_token = None
+    db_user.reset_token_expiry = None
     db.commit()
     db.refresh(db_user)
     return db_user

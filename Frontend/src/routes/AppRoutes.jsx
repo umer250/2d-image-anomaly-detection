@@ -7,7 +7,8 @@ import AdminLayout from '../components/layout/AdminLayout';
 // Public Pages
 import Landing from '../pages/shared/Landing';
 import Auth from '../pages/shared/Auth';
-import ResetPassword from '../pages/shared/ResetPassword';
+import ForgotPassword from '../pages/shared/ForgotPassword';
+import ConfirmResetPassword from '../pages/shared/ConfirmResetPassword';
 import About from '../pages/shared/About';
 import NotFound from '../pages/shared/NotFound';
 
@@ -33,7 +34,9 @@ const AppRoutes = () => {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Auth />} />
             <Route path="/register" element={<Auth />} />
-            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/confirm-reset" element={<ConfirmResetPassword />} />
+            <Route path="/reset-password" element={<ConfirmResetPassword />} />
             <Route path="/about" element={<About />} />
 
             {/* Protected User Routes */}

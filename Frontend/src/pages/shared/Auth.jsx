@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, AlertCircle, Scan, Eye, EyeOff, User, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../../context/AuthContext';
@@ -241,6 +241,14 @@ const Auth = () => {
                                 </div>
                             </motion.div>
                         </AnimatePresence>
+
+                        {isLogin && (
+                            <div className="flex justify-end pr-1">
+                                <Link to="/forgot-password" size={14} className="text-[11px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-all">
+                                    Forgot password?
+                                </Link>
+                            </div>
+                        )}
 
                         {/* Error & Success Messages */}
                         {error && (
