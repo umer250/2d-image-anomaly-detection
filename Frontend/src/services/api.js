@@ -62,12 +62,40 @@ export const authAPI = {
         }
     },
 
-    // Reset password
-    resetPassword: async (email, newPassword) => {
+    // Forgot password request
+    forgotPassword: async (email) => {
+        const response = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Request failed');
+        }
+
+        return response.json();
+    },
+
+    // Verify reset token
+    verifyResetToken: async (token) => {
+        const response = await fetch(`${API_BASE_URL}/auth/verify-token?token=${token}`);
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Invalid or expired token');
+        }
+
+        return response.json();
+    },
+
+    // Reset password with token
+    resetPassword: async (token, newPassword) => {
         const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, new_password: newPassword }),
+            body: JSON.stringify({ token, new_password: newPassword }),
         });
 
         if (!response.ok) {
@@ -118,15 +146,34 @@ export const userAPI = {
     },
 
     // Update profile
-    updateProfile: async (fullName) => {
+    updateProfile: async (fullName, avatarUrl) => {
         const response = await fetch(`${API_BASE_URL}/users/profile`, {
             method: 'PUT',
             headers: getAuthHeaders(),
-            body: JSON.stringify({ full_name: fullName }),
+            body: JSON.stringify({
+                full_name: fullName,
+                avatar_url: avatarUrl
+            }),
         });
 
         if (!response.ok) {
             throw new Error('Failed to update profile');
+        }
+
+        return response.json();
+    },
+
+    // Verify current password
+    verifyPassword: async (password) => {
+        const response = await fetch(`${API_BASE_URL}/users/verify-password`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ password }),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Incorrect password');
         }
 
         return response.json();

@@ -3,7 +3,7 @@ User-specific endpoints for profile management, dashboard, and settings.
 Accessible by authenticated users (both user and admin roles).
 """
 
-from typing import Any
+from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -11,13 +11,14 @@ from pydantic import BaseModel
 from app.api import deps
 from app.crud import crud_user
 from app.models.user import User
-from app.schemas.user import User as UserSchema
+from app.schemas.user import User as UserSchema, VerifyPassword
 
 router = APIRouter()
 
 # Schema for profile update
 class ProfileUpdate(BaseModel):
     full_name: str
+    avatar_url: Optional[str] = None
 
 # Schema for password change
 class PasswordChange(BaseModel):
@@ -132,10 +133,13 @@ def update_user_profile(
     current_user: User = Depends(deps.require_user),
 ) -> Any:
     """
-    Update user's own profile (name only).
+    Update user's own profile (name and avatar).
     """
     updated_user = crud_user.update_user_profile(
-        db, user_id=current_user.id, full_name=profile_data.full_name
+        db, 
+        user_id=current_user.id, 
+        full_name=profile_data.full_name,
+        avatar_url=profile_data.avatar_url
     )
     
     if not updated_user:
@@ -178,3 +182,23 @@ def change_user_password(
         )
     
     return {"message": "Password updated successfully"}
+@router.post("/verify-password")
+def verify_user_password(
+    *,
+    db: Session = Depends(deps.get_db),
+    verify_data: VerifyPassword,
+    current_user: User = Depends(deps.require_user),
+) -> Any:
+    """
+    Verify if the provided password matches the current user's password.
+    Useful for "Confirm current password" flows before allowing sensitive changes.
+    """
+    from app.core import security
+    
+    if not security.verify_password(verify_data.password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=400,
+            detail="Incorrect password",
+        )
+    
+    return {"message": "Password verified successfully"}

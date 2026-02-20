@@ -1,4 +1,4 @@
-
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 
@@ -23,9 +23,24 @@ class Settings(BaseSettings):
     POSTGRES_DB: str = "anomaly_detection_db"
     DATABASE_URL: str | None = None
 
+    # Email
+    SMTP_TLS: bool = True
+    SMTP_SSL: bool = False
+    SMTP_PORT: int = 587
+    SMTP_HOST: str | None = "smtp.gmail.com"
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    EMAILS_FROM_EMAIL: str | None = None
+    EMAILS_FROM_NAME: str | None = "2D Anomaly Detection"
+
+    # Frontend
+    FRONTEND_URL: str = "http://localhost:3000"
+
     model_config = SettingsConfigDict(
-        env_file=".env",
-        extra="ignore" # Ignore extra env vars to prevent validation errors
+        # Use absolute path for .env to ensure it's loaded from the Backend directory
+        env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env"),
+        extra="ignore"
     )
 
 settings = Settings()
+print(f"DEBUG: Settings loaded. SMTP_USER={settings.SMTP_USER}")
