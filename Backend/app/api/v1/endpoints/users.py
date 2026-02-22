@@ -43,65 +43,49 @@ def get_user_dashboard(
     """
     Get user's personal dashboard statistics from the database.
     """
-    from app.models.image import Image
-    from app.models.result import Result
+    from app.models.history import History
     from sqlalchemy import func
     from datetime import datetime, timedelta
     
-    # 1. Base Stats
-    total_images = db.query(Image).filter(Image.user_id == current_user.id).count()
-    total_anomalies = db.query(Result).join(Image).filter(
-        Image.user_id == current_user.id, 
-        Result.is_anomaly == True
+    # 1. Base Stats (Now using History table for source of truth)
+    total_images = db.query(History).filter(History.user_id == current_user.id).count()
+    total_anomalies = db.query(History).filter(
+        History.user_id == current_user.id, 
+        History.status == "Anomaly"
     ).count()
     
     # 2. Daily Inspections (Last 7 Days)
     today = datetime.now().date()
     start_date = today - timedelta(days=6)
     
-    # Fetch all recent usages to process in Python (safer for SQLite date strings)
-    recent_images = db.query(Image).filter(
-        Image.user_id == current_user.id,
-        Image.upload_date >= start_date # This relies on default comparison which usually works if types align or string > string
+    recent_history = db.query(History).filter(
+        History.user_id == current_user.id,
+        History.created_at >= start_date
     ).all()
     
-    # Manually aggregate to avoid SQLite func.date issues
     stats_map = {}
-    for img in recent_images:
-        # Handle string or datetime object
-        if isinstance(img.upload_date, str):
-            # Try parsing if it's a string, or just take the date part if ISO format
-            # SQLite default is often "YYYY-MM-DD HH:MM:SS"
-            d_str = img.upload_date.split(' ')[0]
+    for h in recent_history:
+        if isinstance(h.created_at, str):
+            d_str = h.created_at.split(' ')[0]
         else:
-            d_str = str(img.upload_date.date())
-            
+            d_str = str(h.created_at.date())
         stats_map[d_str] = stats_map.get(d_str, 0) + 1
     
-    history = []
+    history_chart = []
     for i in range(7):
         day = start_date + timedelta(days=i)
         day_str = str(day)
-        history.append({
+        history_chart.append({
             "name": day.strftime('%a'),
             "count": stats_map.get(day_str, 0)
         })
 
     # 3. Anomaly Distribution
-    # Use simpler logic or just broad buckets to ensure data shows up
-    # Minor: 0.5 - 0.75 (Assuming threshold is around 0.5-0.6)
-    # Major: 0.75 - 0.9
-    # Critical: > 0.9
-    
-    # We will just query all results and bucket them in python to be sure
-    results = db.query(Result).join(Image).filter(Image.user_id == current_user.id).all()
-    
+    dist_history = db.query(History).filter(History.user_id == current_user.id).all()
     dist_counts = {"Minor": 0, "Major": 0, "Critical": 0}
     
-    for r in results:
-        s = r.anomaly_score
-        # Only count if it's considered an anomaly or high enough score
-        # Using 0.5 as a base "interesting" score
+    for h in dist_history:
+        s = h.score
         if 0.5 <= s < 0.75:
             dist_counts["Minor"] += 1
         elif 0.75 <= s < 0.9:
@@ -120,7 +104,7 @@ def get_user_dashboard(
         "anomaliesDetected": total_anomalies,
         "normalImages": total_images - total_anomalies,
         "accuracy": 98.5,
-        "history": history,
+        "history": history_chart,
         "distribution": distribution,
         "userId": current_user.id
     }

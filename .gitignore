@@ -9,6 +9,12 @@ Backend/venv/
 Backend/.env
 Backend/*.pyc
 
+# Local Data
+Backend/uploads/
+Backend/heatmaps/
+Backend/static/uploads/
+Backend/static/heatmaps/
+
 # IDEs
 .vscode/
 .idea/

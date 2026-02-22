@@ -109,11 +109,28 @@ async def predict(
         db.add(db_result)
         db.commit()
         
+        # 6. Save to History
+        from app.models.history import History as HistoryModel
+        db_history = HistoryModel(
+            user_id=current_user.id,
+            filename=file.filename,
+            file_path=file_path,
+            status="Anomaly" if is_anomaly else "Normal",
+            score=float(score),
+            heatmap_path=web_heatmap_path,
+            threshold=THRESHOLD,
+            model_version=MODEL_VERSION
+        )
+        db.add(db_history)
+        db.commit()
+        
         return {
             "image_id": db_image.id,
             "anomaly_score": round(float(score), 4),
             "is_anomaly": bool(is_anomaly),
-            "heatmap_url": web_heatmap_path,
+            "heatmap_path": web_heatmap_path,
+            "original_path": f"/static/uploads/{filename}",
+            "threshold": THRESHOLD,
             "model_version": MODEL_VERSION
         }
         

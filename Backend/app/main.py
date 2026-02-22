@@ -12,13 +12,7 @@ app = FastAPI(
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:3000",
-        "http://localhost:8000",
-    ],
+    allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -32,7 +26,14 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 # Mount static files
 if not os.path.exists("static"):
     os.makedirs("static")
+if not os.path.exists("uploads"):
+    os.makedirs("uploads")
+if not os.path.exists("heatmaps"):
+    os.makedirs("heatmaps")
+
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/heatmaps", StaticFiles(directory="heatmaps"), name="heatmaps")
 
 @app.get("/")
 def root():

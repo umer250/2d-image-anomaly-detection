@@ -77,10 +77,14 @@ const UserLayout = () => {
 
                 <div className="p-4 border-t border-zinc-800">
                     <div className="flex items-center mb-4 px-2">
-                        <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700">
-                            <span className="text-xs font-bold text-white">
-                                {user?.full_name?.charAt(0) || 'U'}
-                            </span>
+                        <div className="h-8 w-8 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700 overflow-hidden">
+                            {user?.avatar_url ? (
+                                <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                                <span className="text-xs font-bold text-white">
+                                    {user?.full_name?.charAt(0) || 'U'}
+                                </span>
+                            )}
                         </div>
                         <div className="ml-3">
                             <p className="text-sm font-medium text-white max-w-[120px] truncate">{user?.full_name || 'User'}</p>

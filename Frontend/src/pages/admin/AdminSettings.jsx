@@ -390,37 +390,39 @@ const AdminSettings = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <SectionCard>
                                 <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2 font-mono">
-                                    <History size={14} className="text-zinc-600" /> Last Login Activity
+                                    <History size={14} className="text-zinc-600" /> Admin Logs
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-tight">Timestamp</div>
-                                        <div className="text-xs font-mono text-white">Feb 20, 2026 15:17</div>
+                                        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-tight">Account Created</div>
+                                        <div className="text-xs font-mono text-white">
+                                            {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'N/A'}
+                                        </div>
                                     </div>
                                     <div className="flex items-center justify-between">
-                                        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-tight">IP Address</div>
-                                        <div className="text-xs font-mono text-white tracking-widest">192.168.1.1</div>
+                                        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-tight">Registration Time</div>
+                                        <div className="text-xs font-mono text-white">
+                                            {user?.created_at ? new Date(user.created_at).toLocaleTimeString() : 'N/A'}
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-tight">Status</div>
+                                        <div className="text-xs font-mono text-green-400 tracking-widest uppercase">Validated</div>
                                     </div>
                                 </div>
                             </SectionCard>
                             <SectionCard>
                                 <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                    <Activity size={14} className="text-green-500" /> Active Sessions
+                                    <ShieldCheck size={14} className="text-blue-500" /> Infrastructure Access
                                 </h3>
                                 <div className="space-y-4">
                                     <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className="p-1 rounded bg-green-500/10 text-green-500"><Globe size={12} /></div>
-                                            <span className="text-[10px] text-zinc-300 font-medium">Edge Chrome - Windows 11</span>
-                                        </div>
-                                        <span className="text-[8px] font-bold px-1.5 py-0.5 bg-green-500/20 text-green-400 rounded uppercase tracking-tighter shadow-[0_0_8px_rgba(34,197,94,0.2)]">Current</span>
+                                        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-tight">Last Activity</div>
+                                        <div className="text-xs font-mono text-white">Just Now</div>
                                     </div>
-                                    <div className="flex items-center justify-between opacity-50 group">
-                                        <div className="flex items-center gap-2">
-                                            <div className="p-1 rounded bg-zinc-800 text-zinc-500"><Globe size={12} /></div>
-                                            <span className="text-[10px] text-zinc-500 font-medium">Mobile App - iOS 17.2</span>
-                                        </div>
-                                        <button className="text-[8px] font-bold text-red-400 hover:text-red-300 uppercase tracking-widest">Revoke</button>
+                                    <div className="flex items-center justify-between">
+                                        <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-tight">IP Address</div>
+                                        <div className="text-xs font-mono text-white tracking-widest">192.168.1.1</div>
                                     </div>
                                 </div>
                             </SectionCard>

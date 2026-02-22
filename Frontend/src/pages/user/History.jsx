@@ -80,9 +80,11 @@ const History = () => {
                                             </span>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 font-mono text-zinc-400">{item.score ? item.score.toFixed(2) : 'N/A'}</td>
+                                    <td className="px-6 py-4 font-mono text-zinc-400">
+                                        {(item.score !== undefined && item.score !== null) ? item.score.toFixed(2) : 'N/A'}
+                                    </td>
                                     <td className="px-6 py-4 text-right">
-                                        <Link to={`/results`} state={{ fromHistory: true }} className="text-blue-500 hover:text-blue-400 font-medium flex items-center justify-end">
+                                        <Link to={`/results`} state={{ analysisResult: item, image: item.file_path, fromHistory: true }} className="text-blue-500 hover:text-blue-400 font-medium flex items-center justify-end">
                                             View Details
                                             <ChevronRight size={16} className="ml-1" />
                                         </Link>

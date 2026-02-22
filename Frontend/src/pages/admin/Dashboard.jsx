@@ -13,7 +13,8 @@ import {
     Settings,
     ShieldCheck,
     ChevronRight,
-    Search
+    Search,
+    X
 } from 'lucide-react';
 import {
     AreaChart,
@@ -38,6 +39,7 @@ const Dashboard = () => {
         weekly_activity: [],
         anomaly_trends: []
     });
+    const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [timeFilter, setTimeFilter] = useState('Weekly');
 
@@ -46,6 +48,11 @@ const Dashboard = () => {
             try {
                 const data = await adminAPI.getAnalytics();
                 setStats(data);
+
+                // Use real-time high risk notifications from backend
+                if (data.recent_high_risk && data.recent_high_risk.length > 0) {
+                    setNotifications(data.recent_high_risk);
+                }
             } catch (error) {
                 console.error("Dashboard: Error fetching stats:", error);
             } finally {
@@ -55,6 +62,10 @@ const Dashboard = () => {
         fetchStats();
     }, []);
 
+    const closeNotification = (id) => {
+        setNotifications(prev => prev.filter(n => n.id !== id));
+    };
+
     // Helper to get labels based on filter
     const getLabels = () => {
         const now = new Date();
@@ -62,8 +73,11 @@ const Dashboard = () => {
 
         if (timeFilter === 'Daily') {
             for (let i = 23; i >= 0; i--) {
-                const hour = (now.getHours() - i + 24) % 24;
-                labels.push(`${hour}:00`);
+                const date = new Date(now.getTime() - (i * 60 * 60 * 1000));
+                const hour = date.getHours();
+                const ampm = hour >= 12 ? 'PM' : 'AM';
+                const hour12 = hour % 12 || 12;
+                labels.push(`${hour12} ${ampm}`);
             }
         } else if (timeFilter === 'Weekly') {
             const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -75,8 +89,8 @@ const Dashboard = () => {
         } else {
             const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
             for (let i = 11; i >= 0; i--) {
-                const month = (now.getMonth() - i + 12) % 12;
-                labels.push(monthNames[month]);
+                const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                labels.push(monthNames[date.getMonth()]);
             }
         }
         return labels;
@@ -122,7 +136,6 @@ const Dashboard = () => {
         {
             name: 'Total Users',
             value: stats.total_users || 0,
-            change: '+12%',
             icon: Users,
             accent: 'border-blue-500/50',
             iconColor: 'text-blue-400',
@@ -131,7 +144,6 @@ const Dashboard = () => {
         {
             name: 'Total Inspections',
             value: stats.total_images || 0,
-            change: '+4.5%',
             icon: ImageIcon,
             accent: 'border-indigo-500/50',
             iconColor: 'text-indigo-400',
@@ -140,7 +152,6 @@ const Dashboard = () => {
         {
             name: 'Defects Detected',
             value: stats.total_anomalies_detected || 0,
-            change: '+8%',
             icon: AlertTriangle,
             accent: 'border-red-500/50',
             iconColor: 'text-red-400',
@@ -149,7 +160,6 @@ const Dashboard = () => {
         {
             name: 'Efficiency Rate',
             value: '94.2%',
-            change: '+2.1%',
             icon: CheckCircle,
             accent: 'border-green-500/50',
             iconColor: 'text-green-400',
@@ -194,6 +204,32 @@ const Dashboard = () => {
 
     return (
         <div className="space-y-8 pb-12 animate-in fade-in duration-500">
+            {/* High Risk Notifications */}
+            <div className="space-y-3">
+                {notifications.map(notif => (
+                    <div key={notif.id} className="bg-red-500/10 border border-red-500/20 rounded-xl p-4 flex items-center justify-between animate-in slide-in-from-top-2">
+                        <div className="flex items-center gap-4">
+                            <div className="p-2 bg-red-500/20 rounded-lg text-red-500">
+                                <AlertTriangle size={20} />
+                            </div>
+                            <div>
+                                <p className="text-sm font-bold text-white uppercase tracking-tight">High Risk Anomaly Detected</p>
+                                <p className="text-xs text-zinc-400">
+                                    User: <span className="text-white">{notif.user}</span> ({notif.email}) |
+                                    Score: <span className="text-red-500 font-bold">{notif.score}%</span>
+                                </p>
+                            </div>
+                        </div>
+                        <button
+                            onClick={() => closeNotification(notif.id)}
+                            className="p-1 hover:bg-white/10 rounded-lg text-zinc-500 hover:text-white transition-colors"
+                        >
+                            <X size={18} />
+                        </button>
+                    </div>
+                ))}
+            </div>
+
             {/* Header Section */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
@@ -243,9 +279,6 @@ const Dashboard = () => {
                             <div className={clsx("p-2 rounded-lg", card.bg, card.iconColor)}>
                                 <card.icon size={18} />
                             </div>
-                            <span className="text-[10px] text-green-400 font-bold flex items-center gap-0.5">
-                                <ArrowUpRight size={12} /> {card.change}
-                            </span>
                         </div>
                         <h3 className="text-xs text-slate-400 font-medium mb-1">{card.name}</h3>
                         <p className="text-2xl font-bold text-white tracking-tight">

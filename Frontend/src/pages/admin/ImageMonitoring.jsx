@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { adminAPI } from '../../services/api';
 import clsx from 'clsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL?.replace('/api/v1', '') || 'http://localhost:8000';
 
@@ -60,8 +62,11 @@ const ImageMonitoring = () => {
 
     const getFullImageUrl = (path) => {
         if (!path) return '';
-        if (path.startsWith('http')) return path;
-        return `${API_BASE_URL}/${path.replace(/\\/g, '/')}`;
+        if (path.startsWith('http') || path.startsWith('data:')) return path;
+        // The path from backend relative to project root, e.g., 'uploads/filename.jpg'
+        // Vite proxy handles these paths when they start with /uploads or /heatmaps
+        const cleanPath = path.replace(/\\/g, '/');
+        return cleanPath.startsWith('/') ? cleanPath : `/${cleanPath}`;
     };
 
     if (loading) {
@@ -370,7 +375,65 @@ const ImageMonitoring = () => {
 
                                 <button
                                     className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-lg text-[10px] font-bold uppercase tracking-tight shadow-lg shadow-blue-500/10 transition-all border border-blue-500/50"
-                                    onClick={() => window.print()}
+                                    onClick={() => {
+                                        const doc = new jsPDF();
+                                        const isAnomaly = selectedImage.results?.[0]?.is_anomaly;
+                                        const score = ((selectedImage.results?.[0]?.anomaly_score || 0) * 100).toFixed(2);
+
+                                        // Header with stylized Logo
+                                        doc.setFillColor(30, 41, 59);
+                                        doc.rect(0, 0, 210, 40, 'F');
+
+                                        // Stylized Logo (Red Square)
+                                        doc.setFillColor(239, 68, 68);
+                                        doc.roundedRect(14, 12, 16, 16, 3, 3, 'F');
+                                        doc.setFontSize(14);
+                                        doc.setTextColor(255, 255, 255);
+                                        doc.setFont('helvetica', 'bold');
+                                        doc.text('A', 19, 24);
+
+                                        doc.setFontSize(22);
+                                        doc.text('INSPECTION LOG REPORT', 105, 25, { align: 'center' });
+
+                                        // Summary Block
+                                        doc.setFillColor(248, 250, 252);
+                                        doc.rect(14, 45, 182, 25, 'F');
+                                        doc.setDrawColor(226, 232, 240);
+                                        doc.rect(14, 45, 182, 25);
+
+                                        doc.setFontSize(12);
+                                        doc.setTextColor(30, 41, 59);
+                                        doc.text('IMAGE SUMMARY', 20, 53);
+                                        doc.setFont('helvetica', 'normal');
+                                        doc.setFontSize(10);
+                                        doc.text(`Filename: ${selectedImage.filename}`, 20, 62);
+                                        doc.text(`Status: ${isAnomaly ? 'ANOMALY DETECTED' : 'NORMAL'}`, 120, 62);
+
+                                        // Data Table
+                                        autoTable(doc, {
+                                            startY: 80,
+                                            head: [['Parameter', 'Value']],
+                                            body: [
+                                                ['Image ID', selectedImage.id],
+                                                ['User ID', selectedImage.user_id],
+                                                ['Upload Date', new Date(selectedImage.upload_date).toLocaleString()],
+                                                ['Anomaly Score', `${score}%`],
+                                                ['Detection Status', isAnomaly ? 'Anomaly' : 'Passed'],
+                                                ['File Path', selectedImage.file_path]
+                                            ],
+                                            theme: 'striped',
+                                            headStyles: { fillColor: [59, 130, 246] },
+                                            styles: { fontSize: 10 }
+                                        });
+
+                                        // Footer
+                                        const finalY = doc.lastAutoTable.finalY + 20;
+                                        doc.setFontSize(9);
+                                        doc.setTextColor(150);
+                                        doc.text('Disclaimer: This report is generated by the Automated AI Anomaly Detection System.', 105, finalY, { align: 'center' });
+
+                                        doc.save(`Inspection_Report_${selectedImage.id}.pdf`);
+                                    }}
                                 >
                                     Generate Inspection Report
                                 </button>

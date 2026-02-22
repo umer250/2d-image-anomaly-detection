@@ -160,26 +160,25 @@ def get_analytics(
 ) -> Any:
     logging.info("get_analytics: Started")
     
-    from app.models.image import Image
-    from app.models.result import Result
+    from app.models.history import History
     from sqlalchemy import func
     from datetime import datetime, timedelta
     
     try:
         total_users = db.query(User).count()
-        total_images = db.query(Image).count()
-        total_anomalies = db.query(Result).filter(Result.is_anomaly == True).count()
+        total_images = db.query(History).count()
+        total_anomalies = db.query(History).filter(History.status == "Anomaly").count()
         
         # 1. Hourly Activity (Last 24 Hours)
         daily_activity = []
         now = datetime.now()
         for i in range(23, -1, -1):
             target_time = now - timedelta(hours=i)
-            count = db.query(Image).filter(
-                func.extract('hour', Image.upload_date) == target_time.hour,
-                func.extract('day', Image.upload_date) == target_time.day,
-                func.extract('month', Image.upload_date) == target_time.month,
-                func.extract('year', Image.upload_date) == target_time.year
+            count = db.query(History).filter(
+                func.extract('hour', History.created_at) == target_time.hour,
+                func.extract('day', History.created_at) == target_time.day,
+                func.extract('month', History.created_at) == target_time.month,
+                func.extract('year', History.created_at) == target_time.year
             ).count()
             daily_activity.append(count)
 
@@ -187,7 +186,7 @@ def get_analytics(
         weekly_activity = []
         for i in range(6, -1, -1):
             day = (now - timedelta(days=i)).date()
-            count = db.query(Image).filter(func.date(Image.upload_date) == day).count()
+            count = db.query(History).filter(func.date(History.created_at) == day).count()
             weekly_activity.append(count)
 
         # 3. Monthly Activity (Last 12 Months)
@@ -195,9 +194,9 @@ def get_analytics(
         for i in range(11, -1, -1):
             month = (now.month - i - 1) % 12 + 1
             year = now.year + (now.month - i - 1) // 12
-            count = db.query(Image).filter(
-                func.extract('month', Image.upload_date) == month,
-                func.extract('year', Image.upload_date) == year
+            count = db.query(History).filter(
+                func.extract('month', History.created_at) == month,
+                func.extract('year', History.created_at) == year
             ).count()
             monthly_activity.append(count)
 
@@ -206,17 +205,33 @@ def get_analytics(
         for i in range(11, -1, -1):
             month = (now.month - i - 1) % 12 + 1
             year = now.year + (now.month - i - 1) // 12
-            count = db.query(Result).join(Image).filter(
-                Result.is_anomaly == True,
-                func.extract('month', Image.upload_date) == month,
-                func.extract('year', Image.upload_date) == year
+            count = db.query(History).filter(
+                History.status == "Anomaly",
+                func.extract('month', History.created_at) == month,
+                func.extract('year', History.created_at) == year
             ).count()
             anomaly_trends.append(count)
 
         # 5. Type Distribution
-        critical = db.query(Result).filter(Result.anomaly_score >= 0.85).count()
-        minor = db.query(Result).filter(Result.anomaly_score >= 0.6, Result.anomaly_score < 0.85).count()
-        noise = db.query(Result).filter(Result.anomaly_score < 0.6).count()
+        critical = db.query(History).filter(History.score >= 0.85).count()
+        minor = db.query(History).filter(History.score >= 0.6, History.score < 0.85).count()
+        noise = db.query(History).filter(History.score < 0.6).count()
+
+        # 6. Recent High Risk Anomalies (Real-time data for notifications)
+        recent_high_risk = []
+        high_risk_records = db.query(History, User).join(User, History.user_id == User.id)\
+            .filter(History.score >= 0.85)\
+            .order_by(History.created_at.desc())\
+            .limit(5).all()
+        
+        for record, user_obj in high_risk_records:
+            recent_high_risk.append({
+                "id": record.id,
+                "user": user_obj.full_name,
+                "email": user_obj.email,
+                "score": round(record.score * 100, 1),
+                "timestamp": record.created_at.isoformat() if record.created_at else None
+            })
 
         return {
             "total_users": total_users,
@@ -232,6 +247,7 @@ def get_analytics(
                 "minor": minor,
                 "noise": noise
             },
+            "recent_high_risk": recent_high_risk,
             "model_version": "v2.5.0-LTS"
         }
     except Exception as e:

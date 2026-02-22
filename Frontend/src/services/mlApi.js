@@ -1,7 +1,7 @@
 
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // ML Service
 export const mlAPI = {
@@ -12,7 +12,7 @@ export const mlAPI = {
         formData.append('file', file);
 
         try {
-            const response = await axios.post(`${API_URL}/images/upload`, formData, {
+            const response = await axios.post(`${API_URL}/ml/predict`, formData, {
                 headers: {
                     'Content-Type': 'multipart/form-data',
                     'Authorization': `Bearer ${token}`

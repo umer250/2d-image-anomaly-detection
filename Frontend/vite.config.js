@@ -11,12 +11,24 @@ export default defineConfig({
         },
     },
     server: {
-        port: 5173,
+        port: 5175,
         proxy: {
             '/api': {
                 target: 'http://localhost:8000',
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api/, '/api/v1')
+            },
+            '/static': {
+                target: 'http://localhost:8000',
+                changeOrigin: true
+            },
+            '/uploads': {
+                target: 'http://localhost:8000',
+                changeOrigin: true
+            },
+            '/heatmaps': {
+                target: 'http://localhost:8000',
+                changeOrigin: true
             }
         }
     }

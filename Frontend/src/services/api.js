@@ -3,7 +3,7 @@
  * Handles all HTTP requests to the backend API
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
@@ -293,8 +293,13 @@ export const adminAPI = {
 // Results APIs
 export const resultsAPI = {
     getHistory: async (skip = 0, limit = 100) => {
-        const response = await fetch(`${API_BASE_URL}/results?skip=${skip}&limit=${limit}`, {
-            headers: getAuthHeaders(),
+        const headers = getAuthHeaders();
+        const url = `${API_BASE_URL}/history?skip=${skip}&limit=${limit}`;
+        console.log("api: getHistory calling URL:", url);
+        console.log("api: getHistory headers:", headers);
+
+        const response = await fetch(url, {
+            headers: headers,
         });
 
         if (!response.ok) {

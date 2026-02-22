@@ -62,11 +62,11 @@ const Reports = () => {
     // Dynamic month names for the last 12 months
     const getMonthLabels = () => {
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-        const currentMonth = new Date().getMonth();
+        const now = new Date();
         const labels = [];
         for (let i = 11; i >= 0; i--) {
-            const index = (currentMonth - i + 12) % 12;
-            labels.push(monthNames[index]);
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            labels.push(monthNames[date.getMonth()]);
         }
         return labels;
     };

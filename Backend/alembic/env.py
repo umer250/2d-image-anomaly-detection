@@ -24,6 +24,7 @@ from app.models.user import User
 from app.models.image import Image
 from app.models.result import Result
 from app.models.settings import UserSettings
+from app.models.history import History
 
 target_metadata = Base.metadata
 

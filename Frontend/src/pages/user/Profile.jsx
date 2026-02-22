@@ -12,9 +12,13 @@ const Profile = () => {
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
                 <div className="h-32 bg-gradient-to-r from-blue-600 to-indigo-600"></div>
                 <div className="px-8 pb-8">
-                    <div className="relative -mt-12 mb-6">
-                        <div className="h-24 w-24 rounded-2xl bg-zinc-800 border-4 border-zinc-900 flex items-center justify-center text-3xl font-bold text-white shadow-xl">
-                            {user?.full_name?.charAt(0) || 'U'}
+                    <div className="relative -mt-12 mb-6 text-center md:text-left">
+                        <div className="mx-auto md:mx-0 h-24 w-24 rounded-2xl bg-zinc-800 border-4 border-zinc-900 flex items-center justify-center text-3xl font-bold text-white shadow-xl overflow-hidden">
+                            {user?.avatar_url ? (
+                                <img src={user.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                            ) : (
+                                user?.full_name?.charAt(0) || 'U'
+                            )}
                         </div>
                     </div>
 
@@ -50,7 +54,13 @@ const Profile = () => {
                                 <label className="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Member Since</label>
                                 <div className="flex items-center text-white bg-black/30 p-3 rounded-lg border border-zinc-800">
                                     <Calendar size={18} className="mr-3 text-zinc-500" />
-                                    {user?.created_at ? new Date(user.created_at).toLocaleDateString() : 'Today'}
+                                    {user?.created_at ? (
+                                        new Date(user.created_at).toLocaleDateString('en-US', {
+                                            year: 'numeric',
+                                            month: 'long',
+                                            day: 'numeric'
+                                        })
+                                    ) : 'Analysis Pending'}
                                 </div>
                             </div>
                         </div>
