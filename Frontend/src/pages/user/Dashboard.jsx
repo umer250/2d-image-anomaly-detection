@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+
 import {
     Activity,
     AlertTriangle,
@@ -137,14 +137,12 @@ const Dashboard = () => {
                 {loading
                     ? Array(4).fill(0).map((_, i) => <SkeletonCard key={i} />)
                     : stats.map((item, idx) => (
-                        <motion.div
+                        <div
                             key={item.name}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.08 }}
-                            whileHover={{ scale: 1.02 }}
-                            className={`relative bg-zinc-900/50 border rounded-2xl p-5 overflow-hidden transition-all duration-300 shadow-lg hover:shadow-xl ${item.border}`}
+                            className={`relative bg-zinc-900/50 border rounded-2xl p-5 overflow-hidden transition-all duration-300 shadow-lg hover:shadow-xl ${item.border} animate-in fade-in slide-in-from-bottom-2 duration-500`}
+                            style={{ animationDelay: `${idx * 80}ms`, animationFillMode: 'both' }}
                         >
+
                             {/* Subtle accent glow */}
                             <div
                                 className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10 blur-2xl pointer-events-none"
@@ -172,7 +170,7 @@ const Dashboard = () => {
                             >
                                 {item.value}
                             </p>
-                        </motion.div>
+                        </div>
                     ))}
             </div>
 
@@ -181,11 +179,10 @@ const Dashboard = () => {
 
                 {/* Daily Inspections */}
                 {loading ? <SkeletonChart /> : (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-zinc-950/40 border border-white/5 p-6 rounded-2xl shadow-xl backdrop-blur-md"
+                    <div
+                        className="bg-zinc-950/40 border border-white/5 p-6 rounded-2xl shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-500"
                     >
+
                         <h3
                             className="text-base font-bold text-white mb-1"
                             style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}
@@ -196,17 +193,17 @@ const Dashboard = () => {
                         <div className="h-[280px] w-full">
                             <DailyInspectionsChart data={dailyInspectionsData} />
                         </div>
-                    </motion.div>
+                    </div>
+
                 )}
 
                 {/* Normal vs Anomaly */}
                 {loading ? <SkeletonChart /> : (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 }}
-                        className="bg-zinc-950/40 border border-white/5 p-6 rounded-2xl shadow-xl backdrop-blur-md"
+                    <div
+                        className="bg-zinc-950/40 border border-white/5 p-6 rounded-2xl shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-500"
+                        style={{ animationDelay: '100ms', animationFillMode: 'both' }}
                     >
+
                         <h3
                             className="text-base font-bold text-white mb-1"
                             style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}
@@ -217,19 +214,19 @@ const Dashboard = () => {
                         <div className="h-[280px] w-full">
                             <NormalVsAnomalyChart data={normalVsAnomalyData} />
                         </div>
-                    </motion.div>
+                    </div>
+
                 )}
 
                 {/* Defect Pattern Recognition — full width */}
                 {loading ? (
                     <div className="lg:col-span-2"><SkeletonChart /></div>
                 ) : (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.2 }}
-                        className="bg-zinc-950/40 border border-white/5 p-6 rounded-2xl shadow-xl lg:col-span-2 backdrop-blur-md"
+                    <div
+                        className="bg-zinc-950/40 border border-white/5 p-6 rounded-2xl shadow-xl lg:col-span-2 backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-500"
+                        style={{ animationDelay: '200ms', animationFillMode: 'both' }}
                     >
+
                         <h3
                             className="text-base font-bold text-white mb-1"
                             style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}
@@ -290,13 +287,15 @@ const Dashboard = () => {
                                                     </div>
                                                 </div>
                                                 <div className="w-full bg-black/40 rounded-full h-1.5 overflow-hidden">
-                                                    <motion.div
-                                                        initial={{ width: 0 }}
-                                                        animate={{ width: `${pct}%` }}
-                                                        transition={{ duration: 1, delay: 0.3 + index * 0.1 }}
-                                                        className="h-full rounded-full"
-                                                        style={{ backgroundColor: DEFECT_COLORS[index % DEFECT_COLORS.length] }}
+                                                    <div
+                                                        className="h-full rounded-full transition-all duration-1000"
+                                                        style={{
+                                                            width: `${pct}%`,
+                                                            backgroundColor: DEFECT_COLORS[index % DEFECT_COLORS.length],
+                                                            transitionDelay: `${300 + index * 100}ms`
+                                                        }}
                                                     />
+
                                                 </div>
                                             </div>
                                         );
@@ -317,7 +316,8 @@ const Dashboard = () => {
                                 </div>
                             </div>
                         )}
-                    </motion.div>
+                    </div>
+
                 )}
             </div>
         </div>

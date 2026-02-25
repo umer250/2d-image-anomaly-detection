@@ -50,10 +50,10 @@ const Dashboard = () => {
                 setStats(data);
 
                 // Use real-time high risk notifications from backend
-                if (data.recent_high_risk && data.recent_high_risk.length > 0) {
-                    setNotifications(data.recent_high_risk);
-                }
+                // If backend returns empty list (because toggle is off), it will clear notifications
+                setNotifications(data.recent_high_risk || []);
             } catch (error) {
+
                 console.error("Dashboard: Error fetching stats:", error);
             } finally {
                 setLoading(false);

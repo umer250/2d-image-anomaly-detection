@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Lock, ArrowRight, CheckCircle, Scan, AlertCircle, Eye, EyeOff, ShieldCheck } from 'lucide-react';
-import { motion } from 'framer-motion';
+
 import clsx from 'clsx';
 import { authAPI } from '../../services/api';
 
@@ -19,9 +19,10 @@ const ConfirmResetPassword = () => {
         confirm_password: ''
     });
 
-    // Extract token from query params
+    // Extract token from query params or state
     const query = new URLSearchParams(location.search);
-    const token = query.get('token') || '';
+    const token = location.state?.token || query.get('token') || '';
+
 
     useEffect(() => {
         const verifyToken = async () => {
@@ -102,11 +103,10 @@ const ConfirmResetPassword = () => {
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="bg-zinc-900 shadow-2xl sm:rounded-xl border border-white/5 overflow-hidden"
+                <div
+                    className="bg-zinc-900 shadow-2xl sm:rounded-xl border border-white/5 overflow-hidden animate-in fade-in zoom-in-95 duration-500"
                 >
+
                     <div className="p-8 sm:px-10">
                         {success ? (
                             <div className="text-center space-y-6 py-4">
@@ -116,17 +116,17 @@ const ConfirmResetPassword = () => {
                                 <div className="space-y-2">
                                     <h3 className="text-lg font-bold text-white uppercase tracking-tight">Success</h3>
                                     <p className="text-sm text-zinc-400">
-                                        Your password has been reset. Redirecting to login...
+                                        Your password has been reset successfully. Redirecting to login...
                                     </p>
+
                                 </div>
                                 <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
-                                    <motion.div
-                                        initial={{ width: "0%" }}
-                                        animate={{ width: "100%" }}
-                                        transition={{ duration: 3 }}
-                                        className="h-full bg-green-500"
+                                    <div
+                                        className="h-full bg-green-500 transition-all duration-3000 ease-linear"
+                                        style={{ width: success ? '100%' : '0%' }}
                                     />
                                 </div>
+
                             </div>
                         ) : (
                             <form className="space-y-6" onSubmit={handleSubmit}>
@@ -226,7 +226,7 @@ const ConfirmResetPassword = () => {
                             </form>
                         )}
                     </div>
-                </motion.div>
+                </div>
             </div>
         </div>
     );

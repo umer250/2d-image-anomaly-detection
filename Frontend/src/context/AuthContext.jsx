@@ -114,13 +114,40 @@ export const AuthProvider = ({ children }) => {
     };
 
     // Logout function
-    const logout = () => {
+    const logout = React.useCallback(() => {
         localStorage.removeItem('access_token');
         setToken(null);
         setUser(null);
-    };
+    }, []);
+
+    // Inactivity Timer (30 minutes)
+    useEffect(() => {
+        let timeout;
+        const INACTIVITY_LIMIT = 30 * 60 * 1000;
+
+        const resetTimer = () => {
+            if (timeout) clearTimeout(timeout);
+            if (token && user) {
+                timeout = setTimeout(() => {
+                    console.warn("Session expired due to inactivity (30m)");
+                    logout();
+                }, INACTIVITY_LIMIT);
+            }
+        };
+
+        const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+        events.forEach(event => window.addEventListener(event, resetTimer));
+
+        resetTimer();
+
+        return () => {
+            if (timeout) clearTimeout(timeout);
+            events.forEach(event => window.removeEventListener(event, resetTimer));
+        };
+    }, [token, user, logout]);
 
     // Register function (doesn't auto-login)
+
     const register = async (userData) => {
         try {
             await authAPI.register(userData);

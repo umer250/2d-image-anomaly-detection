@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+
 import { Link } from 'react-router-dom';
+
 import {
     User,
     Shield,
@@ -41,7 +43,9 @@ const AdminSettings = () => {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
     const [showPasswords, setShowPasswords] = useState({ current: false, new: false });
+    const [showRestrictedPassword, setShowRestrictedPassword] = useState(false);
     const [isVerified, setIsVerified] = useState(false);
+
 
     // Core States
     const [users, setUsers] = useState([]);
@@ -64,6 +68,34 @@ const AdminSettings = () => {
         confirm_password: ''
     });
 
+    const [restrictedModal, setRestrictedModal] = useState({
+        isOpen: false,
+        type: '', // 'reset' or 'wipe'
+        password: ''
+    });
+
+    const handleRestrictedAction = async () => {
+        setLoading(true);
+        setMessage({ type: '', text: '' });
+        try {
+            if (restrictedModal.type === 'reset') {
+                await adminAPI.resetSystem(restrictedModal.password);
+                setMessage({ type: 'success', text: 'System reset successful. All history and uploads cleared.' });
+            } else if (restrictedModal.type === 'wipe') {
+                await adminAPI.wipeAllUsers(restrictedModal.password);
+                setMessage({ type: 'success', text: 'User wipe successful. All non-admin accounts removed.' });
+                fetchUsers();
+            }
+            setRestrictedModal({ isOpen: false, type: '', password: '' });
+        } catch (err) {
+            setMessage({ type: 'error', text: err.message || 'Action failed' });
+        } finally {
+            setLoading(false);
+            setTimeout(() => setMessage({ type: '', text: '' }), 4000);
+        }
+    };
+
+
     const fetchUsers = async () => {
         try {
             const usersData = await adminAPI.getUsers();
@@ -73,9 +105,23 @@ const AdminSettings = () => {
         }
     };
 
+    const fetchSettings = async () => {
+        try {
+            const settings = await adminAPI.getSettings();
+            setSystemConfig(prev => ({
+                ...prev,
+                email_notifications: !!settings.notification_enabled
+            }));
+        } catch (error) {
+            console.error("Settings: Error fetching initial settings:", error);
+        }
+    };
+
     useEffect(() => {
         fetchUsers();
+        fetchSettings();
     }, []);
+
 
     const handleVerify = async () => {
         setLoading(true);
@@ -122,10 +168,12 @@ const AdminSettings = () => {
                 setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
                 setIsVerified(false);
             } else if (section === 'system settings') {
-                // System settings aren't implemented in the backend yet
-                await new Promise(resolve => setTimeout(resolve, 800));
+                await adminAPI.updateSettings({
+                    notification_enabled: systemConfig.email_notifications ? 1 : 0
+                });
                 setMessage({ type: 'success', text: 'System configuration deployed.' });
             }
+
         } catch (err) {
             setMessage({ type: 'error', text: err.message || `Failed to update ${section}.` });
         } finally {
@@ -359,14 +407,20 @@ const AdminSettings = () => {
                                             </div>
                                             <div className="space-y-1.5">
                                                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Confirm New</label>
-                                                <input
-                                                    type="password"
-                                                    value={passwordData.confirm_password}
-                                                    onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
-                                                    placeholder="••••••••"
-                                                    className="w-full bg-black border border-zinc-800 rounded-lg py-2 px-4 text-sm text-white focus:border-white/20 outline-none"
-                                                />
+                                                <div className="relative">
+                                                    <input
+                                                        type={showPasswords.new ? "text" : "password"}
+                                                        value={passwordData.confirm_password}
+                                                        onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
+                                                        placeholder="••••••••"
+                                                        className="w-full bg-black border border-zinc-800 rounded-lg py-2 px-4 pr-10 text-sm text-white focus:border-white/20 outline-none"
+                                                    />
+                                                    <button onClick={() => setShowPasswords({ ...showPasswords, new: !showPasswords.new })} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400">
+                                                        {showPasswords.new ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                    </button>
+                                                </div>
                                             </div>
+
                                         </div>
                                         <div className="pt-6 border-t border-white/5 flex items-center justify-between">
                                             <p className="text-[10px] text-zinc-500 font-medium">Use 8+ characters for maximum protection.</p>
@@ -521,21 +575,29 @@ const AdminSettings = () => {
                                 <table className="w-full text-left">
                                     <thead className="bg-zinc-800/20 border-b border-white/5">
                                         <tr>
+                                            <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest outline-none">S.No</th>
                                             <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest outline-none">Identity</th>
                                             <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest outline-none">Permission Layer</th>
                                             <th className="px-6 py-4 text-[10px] font-bold text-zinc-500 uppercase tracking-widest outline-none text-right">Operations</th>
                                         </tr>
                                     </thead>
+
                                     <tbody className="divide-y divide-white/5">
-                                        {users.map((u) => (
+                                        {users.filter(u => u.role === 'admin').map((u, index) => (
                                             <tr key={u.id} className="hover:bg-white/[0.02] transition-colors group">
+                                                <td className="px-6 py-4 text-[10px] font-mono text-zinc-500">
+                                                    {index + 1}
+                                                </td>
                                                 <td className="px-6 py-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="w-8 h-8 rounded-lg bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-zinc-500 border border-white/5 group-hover:border-white/10 transition-colors uppercase">
                                                             {u.full_name?.charAt(0) || u.email?.charAt(0) || 'U'}
                                                         </div>
                                                         <div>
-                                                            <p className="text-xs font-bold text-white uppercase tracking-tight">{u.full_name || 'Anonymous User'}</p>
+                                                            <div className="flex items-center gap-2">
+                                                                <p className="text-xs font-bold text-white uppercase tracking-tight">{u.full_name || 'Anonymous User'}</p>
+                                                                <span className="text-[9px] text-zinc-600 font-mono">#{u.id}</span>
+                                                            </div>
                                                             <p className="text-[10px] text-zinc-500 lowercase font-mono">{u.email}</p>
                                                         </div>
                                                     </div>
@@ -576,18 +638,19 @@ const AdminSettings = () => {
                                 </table>
                             </div>
                             <div className="p-6 border-t border-white/5 flex items-center justify-between">
-                                <p className="text-[9px] text-zinc-500 font-medium uppercase tracking-tight">Active Infrastructure Operators: {users.length}</p>
+                                <p className="text-[9px] text-zinc-500 font-medium uppercase tracking-tight">Active Infrastructure Operators: {users.filter(u => u.role === 'admin').length}</p>
                                 <button className="flex items-center gap-1 text-[10px] font-bold text-zinc-500 uppercase tracking-widest hover:text-white transition-all">
                                     View All Activity
                                     <ChevronRight size={14} className="text-zinc-700" />
                                 </button>
                             </div>
+
                         </SectionCard>
                     </div>
                 )}
             </div>
 
-            {/* Danger Zone */}
+            {/* Restricted Zone Warning & Buttons */}
             <div className="w-full lg:w-64 space-y-4">
                 <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-6">
                     <div className="flex items-center gap-3 mb-6">
@@ -598,17 +661,88 @@ const AdminSettings = () => {
                         Destructive actions. proceed with extreme caution.
                     </p>
                     <div className="space-y-2">
-                        <button className="w-full flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 hover:bg-red-500 hover:text-white transition-all text-[10px] font-bold uppercase tracking-wider">
-                            <Trash2 size={14} /> Wipe All Logs
+                        <button
+                            onClick={() => setRestrictedModal({ isOpen: true, type: 'wipe', password: '' })}
+                            className="w-full flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 hover:bg-red-500 hover:text-white transition-all text-[10px] font-bold uppercase tracking-wider"
+                        >
+                            <Trash2 size={14} /> Wipe All Users
                         </button>
-                        <button className="w-full flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 hover:bg-red-500 hover:text-white transition-all text-[10px] font-bold uppercase tracking-wider">
+                        <button
+                            onClick={() => setRestrictedModal({ isOpen: true, type: 'reset', password: '' })}
+                            className="w-full flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 hover:bg-red-500 hover:text-white transition-all text-[10px] font-bold uppercase tracking-wider"
+                        >
                             <RefreshCw size={14} /> System Reset
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* Restricted Action Modal */}
+            {restrictedModal.isOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div className="bg-zinc-900 border border-red-500/30 rounded-2xl p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300">
+
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="p-3 bg-red-500/10 rounded-xl text-red-500">
+                                <ShieldCheck size={24} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-bold text-white tracking-tight">System Security Clearance</h3>
+                                <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest">Administrative Authentication Required</p>
+                            </div>
+                        </div>
+
+                        <p className="text-sm text-zinc-400 leading-relaxed mb-8">
+                            You are about to perform a <span className="text-red-500 font-bold uppercase tracking-tighter">
+                                {restrictedModal.type === 'reset' ? 'Full System Reset' : 'Global User Purge'}
+                            </span>. This action is irreversible and will permanently delete data from the infrastructure.
+                        </p>
+
+                        <div className="space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Database Security Key</label>
+                                <div className="relative">
+                                    <input
+                                        type={showRestrictedPassword ? "text" : "password"}
+                                        value={restrictedModal.password}
+                                        onChange={(e) => setRestrictedModal({ ...restrictedModal, password: e.target.value })}
+                                        className="w-full bg-black border border-zinc-800 rounded-xl py-3 px-4 pr-10 text-sm text-white focus:border-red-500/50 outline-none transition-all placeholder:text-zinc-800"
+                                        placeholder="Enter system access code..."
+                                        autoFocus
+                                    />
+                                    <button
+                                        onClick={() => setShowRestrictedPassword(!showRestrictedPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-red-900/40 hover:text-red-500 transition-colors"
+                                    >
+                                        {showRestrictedPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                            </div>
+
+
+                            <div className="flex gap-3 pt-4">
+                                <button
+                                    onClick={() => setRestrictedModal({ isOpen: false, type: '', password: '' })}
+                                    className="flex-1 px-6 py-3 rounded-xl text-xs font-bold uppercase tracking-widest text-zinc-500 hover:bg-white/5 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleRestrictedAction}
+                                    disabled={loading || !restrictedModal.password}
+                                    className="flex-1 px-6 py-3 bg-red-600 text-white rounded-xl text-xs font-bold uppercase tracking-widest hover:bg-red-500 transition-all shadow-xl shadow-red-500/20 active:scale-95 disabled:opacity-50"
+                                >
+                                    {loading ? 'Processing...' : 'Execute Action'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };
 
 export default AdminSettings;
+

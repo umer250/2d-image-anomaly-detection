@@ -11,6 +11,10 @@ import ForgotPassword from '../pages/shared/ForgotPassword';
 import ConfirmResetPassword from '../pages/shared/ConfirmResetPassword';
 import About from '../pages/shared/About';
 import NotFound from '../pages/shared/NotFound';
+import AccessDenied from '../pages/shared/AccessDenied';
+import VerifyOTP from '../pages/shared/VerifyOTP';
+
+
 
 // User Pages
 import Dashboard from '../pages/user/Dashboard';
@@ -35,9 +39,13 @@ const AppRoutes = () => {
             <Route path="/login" element={<Auth />} />
             <Route path="/register" element={<Auth />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/verify-otp" element={<VerifyOTP />} />
             <Route path="/confirm-reset" element={<ConfirmResetPassword />} />
+
             <Route path="/reset-password" element={<ConfirmResetPassword />} />
             <Route path="/about" element={<About />} />
+            <Route path="/403" element={<AccessDenied />} />
+
 
             {/* Protected User Routes */}
             <Route element={<UserLayout />}>

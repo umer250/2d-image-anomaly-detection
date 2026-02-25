@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, AlertCircle, Scan, Eye, EyeOff, User, CheckCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+
 import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
 
@@ -117,11 +117,7 @@ const Auth = () => {
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-zinc-900/80 backdrop-blur-xl py-8 px-4 shadow-2xl sm:rounded-2xl sm:px-10 border border-zinc-800"
-                >
+                <div className="bg-zinc-900/80 backdrop-blur-xl py-8 px-4 shadow-2xl sm:rounded-2xl sm:px-10 border border-zinc-800 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Toggle Switch */}
                     <div className="flex p-1 bg-zinc-950 rounded-lg mb-8 border border-zinc-800">
                         <button
@@ -147,100 +143,91 @@ const Auth = () => {
                     </div>
 
                     <form className="space-y-6" onSubmit={handleSubmit}>
-                        <AnimatePresence mode="wait">
-                            <motion.div
-                                key={isLogin ? 'login' : 'register'}
-                                initial={{ opacity: 0, x: isLogin ? -20 : 20 }}
-                                animate={{ opacity: 1, x: 0 }}
-                                exit={{ opacity: 0, x: isLogin ? 20 : -20 }}
-                                transition={{ duration: 0.2 }}
-                                className="space-y-6"
-                            >
-                                {/* Name Field - Register Only */}
-                                {!isLogin && (
-                                    <div>
-                                        <label htmlFor="name" className="block text-sm font-medium text-zinc-300">
-                                            Full Name
-                                        </label>
-                                        <div className="mt-1 relative rounded-md shadow-sm">
-                                            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                                <User className="h-5 w-5 text-zinc-500" />
-                                            </div>
-                                            <input
-                                                id="name"
-                                                name="name"
-                                                type="text"
-                                                autoComplete="name"
-                                                required={!isLogin}
-                                                value={formData.name}
-                                                onChange={handleChange}
-                                                className="focus:ring-white focus:border-white block w-full pl-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
-                                                placeholder="John Doe"
-                                            />
-                                        </div>
-                                    </div>
-                                )}
-
-                                {/* Email Field */}
+                        <div key={isLogin ? 'login' : 'register'} className="space-y-6 animate-in fade-in duration-200">
+                            {/* Name Field - Register Only */}
+                            {!isLogin && (
                                 <div>
-                                    <label htmlFor="email" className="block text-sm font-medium text-zinc-300">
-                                        Email address
+                                    <label htmlFor="name" className="block text-sm font-medium text-zinc-300">
+                                        Full Name
                                     </label>
                                     <div className="mt-1 relative rounded-md shadow-sm">
                                         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Mail className="h-5 w-5 text-zinc-500" />
+                                            <User className="h-5 w-5 text-zinc-500" />
                                         </div>
                                         <input
-                                            id="email"
-                                            name="email"
-                                            type="email"
-                                            autoComplete="email"
-                                            required
-                                            value={formData.email}
+                                            id="name"
+                                            name="name"
+                                            type="text"
+                                            autoComplete="name"
+                                            required={!isLogin}
+                                            value={formData.name}
                                             onChange={handleChange}
                                             className="focus:ring-white focus:border-white block w-full pl-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
-                                            placeholder="you@example.com"
+                                            placeholder="John Doe"
                                         />
                                     </div>
                                 </div>
+                            )}
 
-                                {/* Password Field */}
-                                <div>
-                                    <label htmlFor="password" className="block text-sm font-medium text-zinc-300">
-                                        Password
-                                    </label>
-                                    <div className="mt-1 relative rounded-md shadow-sm">
-                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <Lock className="h-5 w-5 text-zinc-500" />
-                                        </div>
-                                        <input
-                                            id="password"
-                                            name="password"
-                                            type={showPassword ? "text" : "password"}
-                                            autoComplete={isLogin ? "current-password" : "new-password"}
-                                            required
-                                            value={formData.password}
-                                            onChange={handleChange}
-                                            className="focus:ring-white focus:border-white block w-full pl-10 pr-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
-                                            placeholder="••••••••"
-                                        />
-                                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                className="text-zinc-500 hover:text-white focus:outline-none"
-                                            >
-                                                {showPassword ? (
-                                                    <EyeOff className="h-5 w-5" aria-hidden="true" />
-                                                ) : (
-                                                    <Eye className="h-5 w-5" aria-hidden="true" />
-                                                )}
-                                            </button>
-                                        </div>
+                            {/* Email Field */}
+                            <div>
+                                <label htmlFor="email" className="block text-sm font-medium text-zinc-300">
+                                    Email address
+                                </label>
+                                <div className="mt-1 relative rounded-md shadow-sm">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Mail className="h-5 w-5 text-zinc-500" />
+                                    </div>
+                                    <input
+                                        id="email"
+                                        name="email"
+                                        type="email"
+                                        autoComplete="email"
+                                        required
+                                        value={formData.email}
+                                        onChange={handleChange}
+                                        className="focus:ring-white focus:border-white block w-full pl-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
+                                        placeholder="you@example.com"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Password Field */}
+                            <div>
+                                <label htmlFor="password" className="block text-sm font-medium text-zinc-300">
+                                    Password
+                                </label>
+                                <div className="mt-1 relative rounded-md shadow-sm">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Lock className="h-5 w-5 text-zinc-500" />
+                                    </div>
+                                    <input
+                                        id="password"
+                                        name="password"
+                                        type={showPassword ? "text" : "password"}
+                                        autoComplete={isLogin ? "current-password" : "new-password"}
+                                        required
+                                        value={formData.password}
+                                        onChange={handleChange}
+                                        className="focus:ring-white focus:border-white block w-full pl-10 pr-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
+                                        placeholder="••••••••"
+                                    />
+                                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="text-zinc-500 hover:text-white focus:outline-none"
+                                        >
+                                            {showPassword ? (
+                                                <EyeOff className="h-5 w-5" aria-hidden="true" />
+                                            ) : (
+                                                <Eye className="h-5 w-5" aria-hidden="true" />
+                                            )}
+                                        </button>
                                     </div>
                                 </div>
-                            </motion.div>
-                        </AnimatePresence>
+                            </div>
+                        </div>
 
                         {isLogin && (
                             <div className="flex justify-end pr-1">
@@ -252,16 +239,16 @@ const Auth = () => {
 
                         {/* Error & Success Messages */}
                         {error && (
-                            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="rounded-md bg-red-500/10 border border-red-500/20 p-3 flex items-center">
+                            <div className="rounded-md bg-red-500/10 border border-red-500/20 p-3 flex items-center animate-in fade-in duration-200">
                                 <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
                                 <p className="text-sm text-red-400">{error}</p>
-                            </motion.div>
+                            </div>
                         )}
                         {successMessage && (
-                            <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="rounded-md bg-green-500/10 border border-green-500/20 p-3 flex items-center">
+                            <div className="rounded-md bg-green-500/10 border border-green-500/20 p-3 flex items-center animate-in fade-in duration-200">
                                 <CheckCircle className="h-5 w-5 text-green-400 mr-2" />
                                 <p className="text-sm text-green-400">{successMessage}</p>
-                            </motion.div>
+                            </div>
                         )}
 
                         <div className="pt-2">
@@ -293,7 +280,7 @@ const Auth = () => {
                             </div>
                         </div>
                     )}
-                </motion.div>
+                </div>
             </div>
         </div>
     );

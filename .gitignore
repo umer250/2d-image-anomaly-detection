@@ -4,10 +4,12 @@ Frontend/dist/
 Frontend/.env
 
 # Python
-Backend/__pycache__/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
 Backend/venv/
 Backend/.env
-Backend/*.pyc
 
 # Local Data
 Backend/uploads/

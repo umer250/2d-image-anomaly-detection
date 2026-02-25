@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, CheckCircle, Scan, AlertCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
+
 
 const ForgotPassword = () => {
+    const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+
     const [submitted, setSubmitted] = useState(false);
     const [email, setEmail] = useState('');
     const [error, setError] = useState('');
@@ -17,8 +19,11 @@ const ForgotPassword = () => {
         try {
             const { authAPI } = await import('../../services/api');
             await authAPI.forgotPassword(email);
-            setSubmitted(true);
+            setLoading(false);
+            navigate('/verify-otp', { state: { email } });
         } catch (err) {
+
+
             // Even if it fails, we show success if it's a "user not found" for security,
             // but for generic network errors we show the error.
             if (err.message.includes('network') || err.message.includes('fetch')) {
@@ -49,16 +54,15 @@ const ForgotPassword = () => {
                     Forgot Password
                 </h2>
                 <p className="mt-2 text-center text-sm text-zinc-400">
-                    We'll send you a link to reset your password.
+                    We'll send you a 6-digit verification code to reset your password.
                 </p>
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-zinc-900 shadow-2xl sm:rounded-xl border border-white/5 overflow-hidden"
+                <div
+                    className="bg-zinc-900 shadow-2xl sm:rounded-xl border border-white/5 overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-500"
                 >
+
                     <div className="p-8 sm:px-10">
                         {submitted ? (
                             <div className="text-center space-y-6">
@@ -68,15 +72,16 @@ const ForgotPassword = () => {
                                 <div className="space-y-2">
                                     <h3 className="text-lg font-bold text-white uppercase tracking-tight">Check your email</h3>
                                     <p className="text-sm text-zinc-400 leading-relaxed">
-                                        We've sent a password reset link to <span className="text-white font-medium">{email}</span>.
+                                        We've sent a 6-digit verification code to <span className="text-white font-medium">{email}</span>.
                                     </p>
                                 </div>
                                 <div className="pt-4">
                                     <Link
-                                        to="/login"
+                                        to="/verify-otp"
+                                        state={{ email }}
                                         className="w-full flex justify-center py-3 px-4 rounded-lg text-xs font-bold uppercase tracking-widest text-black bg-white hover:bg-zinc-200 transition-all shadow-lg"
                                     >
-                                        Back to Sign in
+                                        Go to Verification
                                     </Link>
                                 </div>
                                 <p className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">
@@ -107,7 +112,7 @@ const ForgotPassword = () => {
                                             onChange={(e) => setEmail(e.target.value)}
                                             required
                                             className="block w-full pl-10 pr-4 py-3 bg-black border border-zinc-800 rounded-lg text-white text-sm placeholder-zinc-700 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all"
-                                            placeholder="name@example.com"
+                                            placeholder="name@gmail.com"
                                         />
                                     </div>
                                 </div>
@@ -122,12 +127,13 @@ const ForgotPassword = () => {
                                             <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin"></div>
                                         ) : (
                                             <>
-                                                Send Reset Link
+                                                Send Verification Code
                                                 <ArrowRight className="ml-2 h-4 w-4" />
                                             </>
                                         )}
                                     </button>
                                 </div>
+
 
                                 <div className="text-center pt-2">
                                     <Link to="/login" className="text-[10px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-all">
@@ -137,7 +143,7 @@ const ForgotPassword = () => {
                             </form>
                         )}
                     </div>
-                </motion.div>
+                </div>
 
                 {/* Visual Accent */}
                 <div className="mt-8 text-center">

@@ -23,9 +23,8 @@ const ProtectedRoute = ({ children, allowedRoles = [] }) => {
     const userRole = user?.role || 'user';
 
     if (allowedRoles.length > 0 && !allowedRoles.includes(userRole)) {
-        // Redirect to appropriate dashboard if authorized but wrong role
-        const redirectPath = userRole === 'admin' ? '/admin/dashboard' : '/dashboard';
-        return <Navigate to={redirectPath} replace />;
+        // Redirect to 403 Access Denied page if authorized but wrong role
+        return <Navigate to="/403" replace />;
     }
 
     return children;

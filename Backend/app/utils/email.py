@@ -52,29 +52,24 @@ def send_email(
 
 def send_reset_password_email(email_to: str, email: str, token: str) -> None:
     """
-    Send password reset email with the localized reset link.
+    Send password reset email with a 6-digit verification code (OTP).
     """
     project_name = settings.PROJECT_NAME
-    subject = f"{project_name} - Password reset for user {email}"
-    
-    # Generate the link using the FRONTEND_URL from settings
-    # The user requested: http://localhost:3000/reset-password?token=TOKEN
-    link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
+    subject = f"{project_name} - Verification Code: {token}"
     
     html_content = f"""
     <html>
         <body style="font-family: sans-serif; background-color: #000; color: #fff; padding: 20px;">
-            <div style="max-width: 600px; margin: auto; background: #111; padding: 30px; border-radius: 10px; border: 1px solid #333;">
-                <h2 style="color: #fff;">Password Reset Request</h2>
-                <p>We received a request to reset the password for your account: <strong>{email}</strong></p>
-                <p>Click the button below to secure your account. This link will expire in 30 minutes.</p>
-                <div style="text-align: center; margin: 30px 0;">
-                    <a href="{link}" 
-                       style="background-color: #fff; color: #000; padding: 12px 24px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">
-                       Reset Password
-                    </a>
+            <div style="max-width: 600px; margin: auto; background: #111; padding: 30px; border-radius: 10px; border: 1px solid #333; text-align: center;">
+                <h2 style="color: #fff;">Verification Code</h2>
+                <p style="color: #ccc;">We received a request to reset the password for your account: <br><strong>{email}</strong></p>
+                <p style="color: #ccc;">Use the following 6-digit code to verify your identity. This code will expire in 5 minutes.</p>
+                
+                <div style="margin: 30px 0; padding: 20px; background: #000; border: 2px dashed #333; display: inline-block;">
+                    <span style="font-size: 32px; font-weight: bold; letter-spacing: 12px; color: #fff;">{token}</span>
                 </div>
-                <p style="color: #666; font-size: 12px;">If you didn't request this, you can safely ignore this email.</p>
+                
+                <p style="color: #666; font-size: 12px; margin-top: 30px;">If you didn't request this, you can safely ignore this email.</p>
                 <hr style="border: 0; border-top: 1px solid #333; margin: 20px 0;">
                 <p style="color: #888; font-size: 10px;">{project_name} Monitoring Platform</p>
             </div>
@@ -87,3 +82,4 @@ def send_reset_password_email(email_to: str, email: str, token: str) -> None:
         subject=subject,
         html_content=html_content,
     )
+

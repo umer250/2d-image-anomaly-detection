@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Upload as UploadIcon, X, Image as ImageIcon, ArrowRight, AlertCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+
 import clsx from 'clsx';
 import { mlAPI } from '../../services/api';
 
@@ -115,17 +115,15 @@ const Upload = () => {
                     <div className="bg-zinc-900 border border-zinc-800 shadow sm:rounded-lg overflow-hidden">
                         <div className="p-6 sm:p-8">
                             <h3 className="text-lg font-medium text-white mb-4">Image Upload</h3>
-                            <AnimatePresence mode="wait">
+                            <div>
                                 {!preview ? (
-                                    <motion.div
+                                    <div
                                         key="upload-zone"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
                                         className={clsx(
-                                            "relative border-2 border-dashed rounded-lg p-12 text-center hover:bg-zinc-800/50 transition-colors cursor-pointer min-h-[300px] flex flex-col items-center justify-center",
+                                            "relative border-2 border-dashed rounded-lg p-12 text-center hover:bg-zinc-800/50 transition-colors cursor-pointer min-h-[300px] flex flex-col items-center justify-center animate-in fade-in duration-300",
                                             dragActive ? "border-blue-500 bg-blue-500/10" : "border-zinc-700"
                                         )}
+
                                         onDragEnter={handleDrag}
                                         onDragLeave={handleDrag}
                                         onDragOver={handleDrag}
@@ -149,15 +147,14 @@ const Upload = () => {
                                             <span className="pl-1">or drag and drop</span>
                                         </div>
                                         <p className="text-xs leading-5 text-zinc-500">PNG, JPG, GIF up to 10MB</p>
-                                    </motion.div>
+                                    </div>
+
                                 ) : (
-                                    <motion.div
+                                    <div
                                         key="preview-zone"
-                                        initial={{ opacity: 0 }}
-                                        animate={{ opacity: 1 }}
-                                        exit={{ opacity: 0 }}
-                                        className="space-y-6"
+                                        className="space-y-6 animate-in fade-in duration-300"
                                     >
+
                                         <div className="relative rounded-lg overflow-hidden bg-black border border-zinc-800">
                                             <button
                                                 onClick={removeFile}
@@ -185,9 +182,10 @@ const Upload = () => {
                                                 </div>
                                             </div>
                                         </div>
-                                    </motion.div>
+                                    </div>
+
                                 )}
-                            </AnimatePresence>
+                            </div>
 
                             {error && (
                                 <div className="mt-4 p-4 rounded-md bg-red-500/10 border border-red-500/20 flex items-center">

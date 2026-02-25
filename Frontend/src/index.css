@@ -85,3 +85,14 @@
     text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
   }
 }
+
+/* Landing page scanner animation */
+@keyframes scan {
+  0%   { top: 0%;   opacity: 0.5; }
+  50%  { top: 100%; opacity: 1;   }
+  100% { top: 0%;   opacity: 0.5; }
+}
+
+.animate-scan {
+  animation: scan 3s linear infinite;
+}

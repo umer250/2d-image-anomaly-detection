@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, User, Mail, Lock, Shield, Loader2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+
 
 const UserModal = ({ isOpen, onClose, onSave, editingUser }) => {
     const [formData, setFormData] = useState({
@@ -52,22 +52,15 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser }) => {
     };
 
     return (
-        <AnimatePresence>
+        <>
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
+                    <div
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                        className="absolute inset-0 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
                     />
-
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                        className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden"
+                    <div
+                        className="relative w-full max-w-md bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200"
                     >
                         <div className="p-6 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
                             <h2 className="text-xl font-bold text-white flex items-center">
@@ -149,8 +142,8 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser }) => {
                                             type="button"
                                             onClick={() => setFormData(prev => ({ ...prev, role }))}
                                             className={`py-2 text-sm font-medium rounded-xl border transition-all ${formData.role === role
-                                                    ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/20'
-                                                    : 'bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-600'
+                                                ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/20'
+                                                : 'bg-zinc-800 border-zinc-700 text-zinc-500 hover:border-zinc-600'
                                                 }`}
                                         >
                                             {role.charAt(0).toUpperCase() + role.slice(1)}
@@ -172,10 +165,10 @@ const UserModal = ({ isOpen, onClose, onSave, editingUser }) => {
                                 </button>
                             </div>
                         </form>
-                    </motion.div>
+                    </div>
                 </div>
             )}
-        </AnimatePresence>
+        </>
     );
 };
 

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, ArrowRight, CheckCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
+
 
 const ResetPassword = () => {
     const navigate = useNavigate();
@@ -39,11 +39,10 @@ const ResetPassword = () => {
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-zinc-900 py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-zinc-800"
+                <div
+                    className="bg-zinc-900 py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-zinc-800 animate-in fade-in slide-in-from-bottom-4 duration-500"
                 >
+
                     {submitted ? (
                         <div className="text-center">
                             <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
@@ -105,7 +104,7 @@ const ResetPassword = () => {
                             </div>
                         </form>
                     )}
-                </motion.div>
+                </div>
             </div>
         </div>
     );

@@ -90,8 +90,24 @@ export const authAPI = {
         return response.json();
     },
 
+    // Verify OTP
+    verifyOTP: async (email, otp) => {
+        const response = await fetch(`${API_BASE_URL}/auth/verify-otp?email=${email}&otp=${otp}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Invalid or expired OTP');
+        }
+
+        return response.json();
+    },
+
     // Reset password with token
     resetPassword: async (token, newPassword) => {
+
         const response = await fetch(`${API_BASE_URL}/auth/reset-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -288,7 +304,59 @@ export const adminAPI = {
 
         return response.json();
     },
+
+    // Reset System (Admin only, requires password)
+    resetSystem: async (password) => {
+        const response = await fetch(`${API_BASE_URL}/admin/reset-system?password=${password}`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'System reset failed');
+        }
+
+        return response.json();
+    },
+
+    // Wipe All Users (Admin only, requires password)
+    wipeAllUsers: async (password) => {
+        const response = await fetch(`${API_BASE_URL}/admin/wipe-all-users?password=${password}`, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'User wipe failed');
+        }
+
+        return response.json();
+    },
+
+    // Get Admin Settings
+    getSettings: async () => {
+        const response = await fetch(`${API_BASE_URL}/admin/settings`, {
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) throw new Error('Failed to fetch settings');
+        return response.json();
+    },
+
+    // Update Admin Settings
+    updateSettings: async (settings) => {
+        const response = await fetch(`${API_BASE_URL}/admin/settings`, {
+            method: 'PUT',
+            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify(settings),
+        });
+        if (!response.ok) throw new Error('Failed to update settings');
+        return response.json();
+    },
 };
+
+
 
 // Results APIs
 export const resultsAPI = {

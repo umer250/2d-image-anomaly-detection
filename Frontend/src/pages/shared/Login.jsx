@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, AlertCircle, Scan, Eye, EyeOff } from 'lucide-react';
-import { motion } from 'framer-motion';
+
 import { useAuth } from '../../context/AuthContext';
 
 const Login = () => {
@@ -58,12 +58,17 @@ const Login = () => {
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-zinc-900 py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-zinc-800"
+                <div
+                    className="bg-zinc-900 py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-zinc-800 animate-in fade-in slide-in-from-bottom-4 duration-500"
                 >
+
                     <form className="space-y-6" onSubmit={handleSubmit}>
+                        {error && (
+                            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md flex items-center gap-3">
+                                <AlertCircle className="h-5 w-5 text-red-500" />
+                                <span className="text-xs text-red-400 font-medium">{error}</span>
+                            </div>
+                        )}
                         <div>
                             <label htmlFor="email" className="block text-sm font-medium text-zinc-300">
                                 Email address
@@ -142,37 +147,7 @@ const Login = () => {
                             </div>
                         </div>
                     </form>
-
-                    <div className="mt-6">
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center">
-                                <div className="w-full border-t border-zinc-800" />
-                            </div>
-                            <div className="relative flex justify-center text-sm">
-                                <span className="px-2 bg-zinc-900 text-zinc-500">
-                                    Demo Credentials
-                                </span>
-                            </div>
-                        </div>
-
-                        <div className="mt-6 grid grid-cols-1 gap-3">
-                            <div className="rounded-md bg-zinc-800 p-4 border border-zinc-700">
-                                <div className="flex">
-                                    <div className="flex-shrink-0">
-                                        <AlertCircle className="h-5 w-5 text-zinc-400" aria-hidden="true" />
-                                    </div>
-                                    <div className="ml-3">
-                                        <h3 className="text-sm font-medium text-white">For Demo Access:Both Admin and User Dashboard</h3>
-                                        <div className="mt-2 text-sm text-zinc-400">
-                                            <p>Email: admin@example.com</p>
-                                            <p>Password: Admin@123</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </motion.div>
+                </div>
             </div>
         </div>
     );

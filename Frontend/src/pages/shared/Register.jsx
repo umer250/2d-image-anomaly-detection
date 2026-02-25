@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Mail, Lock, User, ArrowRight, Scan, CheckCircle } from 'lucide-react';
-import { motion } from 'framer-motion';
+
 import { useAuth } from '../../context/AuthContext';
 
 const Register = () => {
@@ -9,6 +9,8 @@ const Register = () => {
     const { register } = useAuth();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -22,10 +24,31 @@ const Register = () => {
         });
     };
 
+    const validatePassword = (pass) => {
+        const hasUpper = /[A-Z]/.test(pass);
+        const hasNumber = /[0-9]/.test(pass);
+        const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(pass);
+        return pass.length >= 8 && hasUpper && hasNumber && hasSpecial;
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
+
+        // 1. Email Validation (@gmail.com only)
+        if (!formData.email.toLowerCase().endsWith("@gmail.com")) {
+            setLoading(false);
+            setError("Registration currently only supports @gmail.com addresses.");
+            return;
+        }
+
+        // 2. Strong Password Validation
+        if (!validatePassword(formData.password)) {
+            setLoading(false);
+            setError("Password must be at least 8 chars with 1 uppercase, 1 number, and 1 special char.");
+            return;
+        }
 
         try {
             // Call register API
@@ -54,6 +77,7 @@ const Register = () => {
         }
     };
 
+
     return (
         <div className="min-h-screen bg-black flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
             {/* Background Watermark */}
@@ -78,11 +102,10 @@ const Register = () => {
             </div>
 
             <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-zinc-900 py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-zinc-800"
+                <div
+                    className="bg-zinc-900 py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-zinc-800 animate-in fade-in slide-in-from-bottom-2 duration-500"
                 >
+
                     <form className="space-y-6" onSubmit={handleSubmit}>
                         <div>
                             <label htmlFor="name" className="block text-sm font-medium text-zinc-300">
@@ -139,16 +162,26 @@ const Register = () => {
                                 <input
                                     id="password"
                                     name="password"
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     autoComplete="new-password"
                                     required
                                     value={formData.password}
                                     onChange={handleChange}
-                                    className="focus:ring-white focus:border-white block w-full pl-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
+                                    className="focus:ring-white focus:border-white block w-full pl-10 pr-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
                                     placeholder="••••••••"
                                 />
+                                <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="text-zinc-500 hover:text-white"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                </div>
                             </div>
                         </div>
+
 
                         {error && (
                             <div className="rounded-md bg-red-900/20 border border-red-900 p-3">
@@ -176,10 +209,11 @@ const Register = () => {
                             </button>
                         </div>
                     </form>
-                </motion.div>
+                </div>
             </div>
         </div>
     );
 };
+
 
 export default Register;

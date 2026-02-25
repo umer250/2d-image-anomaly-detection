@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+
 import {
     Scan,
     ShieldCheck,
@@ -16,12 +16,10 @@ const Landing = () => {
             <section className="relative overflow-hidden bg-black">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-16 lg:pt-32 lg:pb-24">
                     <div className="lg:grid lg:grid-cols-12 lg:gap-8">
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.5 }}
-                            className="sm:text-center md:max-w-2xl md:mx-auto lg:col-span-6 lg:text-left"
+                        <div
+                            className="sm:text-center md:max-w-2xl md:mx-auto lg:col-span-6 lg:text-left animate-in fade-in slide-in-from-bottom-4 duration-700"
                         >
+
                             <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-500/10 text-blue-400 text-sm font-medium mb-6 border border-blue-500/20">
                                 <span className="flex h-2 w-2 rounded-full bg-blue-500 mr-2"></span>
                                 FYP Batch 2022-2026
@@ -46,14 +44,14 @@ const Landing = () => {
                                     Login to access the platform.
                                 </p>
                             </div>
-                        </motion.div>
+                        </div>
 
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            transition={{ duration: 0.5, delay: 0.2 }}
-                            className="mt-12 relative sm:max-w-lg sm:mx-auto lg:mt-0 lg:max-w-none lg:mx-0 lg:col-span-6 lg:flex lg:items-center"
+
+                        <div
+                            className="mt-12 relative sm:max-w-lg sm:mx-auto lg:mt-0 lg:max-w-none lg:mx-0 lg:col-span-6 lg:flex lg:items-center animate-in fade-in zoom-in-95 duration-700 delay-200"
+                            style={{ animationFillMode: 'both' }}
                         >
+
                             <div className="relative mx-auto w-full rounded-lg shadow-lg lg:max-w-md">
                                 <div className="relative block w-full bg-zinc-900/50 rounded-2xl overflow-hidden border border-zinc-800 backdrop-blur-sm p-8">
                                     <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 rounded-full bg-blue-500/20 blur-3xl"></div>
@@ -65,18 +63,10 @@ const Landing = () => {
                                             <Scan size={120} className="text-white relative z-10 drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" strokeWidth={1} />
 
                                             {/* Scanning animation effect */}
-                                            <motion.div
-                                                className="absolute top-0 left-0 w-full h-1 bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.8)]"
-                                                animate={{
-                                                    top: ["0%", "100%", "0%"],
-                                                    opacity: [0.5, 1, 0.5]
-                                                }}
-                                                transition={{
-                                                    duration: 3,
-                                                    repeat: Infinity,
-                                                    ease: "linear"
-                                                }}
+                                            <div
+                                                className="absolute top-0 left-0 w-full h-1 bg-blue-400 shadow-[0_0_10px_rgba(96,165,250,0.8)] animate-scan"
                                             />
+
                                         </div>
 
                                         <div className="text-center space-y-2">
@@ -111,7 +101,8 @@ const Landing = () => {
                                     </div>
                                 </div>
                             </div>
-                        </motion.div>
+                        </div>
+
                     </div>
                 </div>
             </section>
@@ -148,14 +139,12 @@ const Landing = () => {
                                     icon: ShieldCheck,
                                 },
                             ].map((feature, index) => (
-                                <motion.div
+                                <div
                                     key={feature.title}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true }}
-                                    transition={{ delay: index * 0.1 }}
-                                    className="pt-6"
+                                    className="pt-6 animate-in fade-in slide-in-from-bottom-4 duration-500"
+                                    style={{ animationDelay: `${index * 100}ms`, animationFillMode: 'both' }}
                                 >
+
                                     <div className="flow-root bg-zinc-900 rounded-lg px-6 pb-8 border border-zinc-800 hover:border-zinc-700 transition-colors">
                                         <div className="-mt-6">
                                             <div>
@@ -169,7 +158,7 @@ const Landing = () => {
                                             </p>
                                         </div>
                                     </div>
-                                </motion.div>
+                                </div>
                             ))}
                         </div>
                     </div>
