@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 import { Link } from 'react-router-dom';
 
@@ -245,6 +246,7 @@ const AdminSettings = () => {
     );
 
     return (
+        <>
         <div className="flex flex-col lg:flex-row gap-8 animate-in fade-in duration-500 pb-12">
             {/* Side Navigation */}
             <div className="w-full lg:w-64 space-y-2">
@@ -676,9 +678,11 @@ const AdminSettings = () => {
                     </div>
                 </div>
             </div>
+        </div>
 
-            {/* Restricted Action Modal */}
-            {restrictedModal.isOpen && (
+        {/* Restricted Action Modal — rendered via portal at document.body so React's
+            reconciler never confuses its DOM parent with the flex layout above */}
+        {restrictedModal.isOpen && createPortal((
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
                     <div className="bg-zinc-900 border border-red-500/30 rounded-2xl p-8 max-w-md w-full shadow-2xl animate-in zoom-in-95 duration-300">
 
@@ -738,9 +742,8 @@ const AdminSettings = () => {
                         </div>
                     </div>
                 </div>
-            )}
-
-        </div>
+        ), document.body)}
+    </>
     );
 };
 

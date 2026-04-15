@@ -1,8 +1,11 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from typing import Optional
 
+
 class HistoryBase(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
     filename: Optional[str] = None
     file_path: Optional[str] = None
     status: Optional[str] = None
@@ -10,6 +13,8 @@ class HistoryBase(BaseModel):
     heatmap_path: Optional[str] = None
     threshold: Optional[float] = None
     model_version: Optional[str] = None
+    category: Optional[str] = None
+
 
 class HistoryCreate(HistoryBase):
     user_id: int
@@ -20,22 +25,23 @@ class HistoryCreate(HistoryBase):
     heatmap_path: Optional[str] = None
     threshold: Optional[float] = None
     model_version: Optional[str] = None
+    category: Optional[str] = "unknown"
+
 
 class HistoryUpdate(HistoryBase):
     pass
 
+
 class History(HistoryBase):
     id: int
     user_id: int
-    upload_date: datetime
+    upload_date: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, protected_namespaces=())
 
     @classmethod
     def from_orm(cls, obj):
-        # Map created_at to upload_date for frontend consistency
         data = super().from_orm(obj)
-        if hasattr(obj, 'created_at'):
+        if hasattr(obj, "created_at"):
             data.upload_date = obj.created_at
         return data

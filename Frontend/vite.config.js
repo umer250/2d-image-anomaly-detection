@@ -12,6 +12,7 @@ export default defineConfig({
     },
     server: {
         port: 5175,
+        host: '0.0.0.0',  // Listen on all interfaces so other browsers/devices on LAN can access
         proxy: {
             '/api': {
                 target: 'http://localhost:8000',

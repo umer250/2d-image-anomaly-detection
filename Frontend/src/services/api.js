@@ -3,7 +3,15 @@
  * Handles all HTTP requests to the backend API
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+// API base URL resolution:
+// - If VITE_API_URL is a relative path (e.g. '/api'), the Vite dev proxy rewrites
+//   /api → /api/v1 on the backend, so we use it as-is.
+// - If VITE_API_URL is a full URL (e.g. 'http://localhost:8000'), we append '/api/v1'
+//   so the final URLs are correct without relying on the proxy.
+const _rawApiUrl = import.meta.env.VITE_API_URL || '/api';
+const API_BASE_URL = _rawApiUrl.startsWith('http')
+    ? `${_rawApiUrl.replace(/\/$/, '')}/api/v1`
+    : _rawApiUrl;  // proxy path — Vite rewrites /api → /api/v1
 
 // Helper function to get auth headers
 const getAuthHeaders = () => {
@@ -48,15 +56,27 @@ export const authAPI = {
             console.log("api: login response received with status:", response.status);
 
             if (!response.ok) {
-                const error = await response.json();
-                console.error("api: login failed with error:", error.detail || 'Login failed');
-                throw new Error(error.detail || 'Login failed');
+                let detail = 'Login failed';
+                try {
+                    const error = await response.json();
+                    detail = error.detail || detail;
+                } catch (_) {
+                    // Response wasn't JSON (e.g. CORS-blocked response)
+                    detail = response.status === 0
+                        ? 'Cannot connect to server. Check that the backend is running.'
+                        : `Server error (${response.status})`;
+                }
+                console.error("api: login failed with error:", detail);
+                throw new Error(detail);
             }
 
             const data = await response.json();
             console.log("api: login successful, returning data.");
             return data;
         } catch (error) {
+            if (error.message === 'Failed to fetch') {
+                throw new Error('Cannot connect to server. Check that the backend is running and CORS is configured.');
+            }
             console.error("api: login network or parsing error:", error);
             throw error;
         }

@@ -109,6 +109,10 @@ export const AuthProvider = ({ children }) => {
             return { success: true, role: userData.role };
         } catch (error) {
             console.error("AuthContext: Login error caught in AuthContext:", error);
+            // Distinguish between a network/CORS failure and an actual auth failure
+            if (error.message === 'Failed to fetch') {
+                throw new Error('Cannot connect to the server. Make sure the backend is running.');
+            }
             throw error;
         }
     };

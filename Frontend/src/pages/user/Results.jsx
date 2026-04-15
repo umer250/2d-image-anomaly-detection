@@ -1,45 +1,113 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
-
-import {
-    CheckCircle,
-    AlertTriangle,
-    ArrowLeft,
-    RefreshCw,
-    Download,
-    Share2,
-    Maximize2
-} from 'lucide-react';
+import { RefreshCw, Download, Share2, ArrowLeft, Maximize2, Tag } from 'lucide-react';
 import { SkeletonCard } from '../../components/SkeletonCard';
 import clsx from 'clsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-// Backend URLs are handled by proxy or environment variables
+// ── Gauge Component ───────────────────────────────────────────────────────────
+const ScoreGauge = ({ score }) => {
+    // Score is 0 to 100
+    const [animatedScore, setAnimatedScore] = useState(0);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setAnimatedScore(score);
+        }, 100);
+        return () => clearTimeout(timer);
+    }, [score]);
+
+    // Color logic
+    let colorClass = 'text-green-500';
+    let strokeColor = '#22c55e'; // green-500
+    if (score >= 70) {
+        colorClass = 'text-red-500';
+        strokeColor = '#ef4444'; // red-500
+    } else if (score >= 40) {
+        colorClass = 'text-yellow-500';
+        strokeColor = '#eab308'; // yellow-500
+    }
+
+    const radius = 50;
+    const circumference = Math.PI * radius; // Half circle
+    const strokeDashoffset = circumference - (animatedScore / 100) * circumference;
+
+    return (
+        <div className="flex flex-col items-center justify-center relative w-fullmax-w-[200px] mx-auto py-6">
+            <svg viewBox="0 0 120 70" className="w-full h-auto overflow-visible">
+                <defs>
+                    <linearGradient id="gaugeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stopColor="#22c55e" />   {/* Green */}
+                        <stop offset="50%" stopColor="#eab308" />  {/* Yellow */}
+                        <stop offset="100%" stopColor="#ef4444" /> {/* Red */}
+                    </linearGradient>
+                </defs>
+                {/* Background Arc */}
+                <path
+                    d="M 10 60 A 50 50 0 0 1 110 60"
+                    fill="none"
+                    stroke="#27272a" // zinc-800
+                    strokeWidth="12"
+                    strokeLinecap="round"
+                />
+                {/* Foreground Animated Arc */}
+                <path
+                    d="M 10 60 A 50 50 0 0 1 110 60"
+                    fill="none"
+                    stroke={strokeColor}
+                    strokeWidth="12"
+                    strokeLinecap="round"
+                    strokeDasharray={circumference}
+                    strokeDashoffset={strokeDashoffset}
+                    className="transition-all duration-1000 ease-out"
+                />
+            </svg>
+            <div className="absolute bottom-4 flex flex-col items-center">
+                <span className={clsx("text-4xl font-bold transition-colors duration-1000", colorClass)}>
+                    {animatedScore.toFixed(1)}<span className="text-xl">%</span>
+                </span>
+                <span className="text-xs text-zinc-500 uppercase tracking-wider font-semibold mt-1">Anomaly Score</span>
+            </div>
+        </div>
+    );
+};
 
 const Results = () => {
     const location = useLocation();
     const navigate = useNavigate();
     const [result, setResult] = useState(null);
-    const [viewMode, setViewMode] = useState('heatmap');
     const [loading, setLoading] = useState(true);
+
+    const API_BASE = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/api.*$/, '') : 'http://localhost:8000';
 
     useEffect(() => {
         if (location.state?.analysisResult) {
-            // Use real data passed from Upload or History
             const data = location.state.analysisResult;
+            
+            // Score handling mapping
+            let rawScore = data.anomaly_score !== undefined ? data.anomaly_score : (data.score || 0);
+            rawScore = typeof rawScore === 'string' ? parseFloat(rawScore) : rawScore;
+            // Handle cases where DB has rawScore > 1
+            if (rawScore > 1.0 && rawScore <= 100) {
+                rawScore = rawScore / 100;
+            }
+
+            const confidencePercent = Math.round(rawScore * 100);
             const isAnomaly = data.is_anomaly !== undefined ? data.is_anomaly : data.status === 'Anomaly';
-            const score = data.anomaly_score !== undefined ? data.anomaly_score : data.score;
 
             setResult({
                 status: isAnomaly ? 'Anomaly' : 'Normal',
-                confidence: (score * 100).toFixed(2),
-                score: score, // Store numeric score for condition check
+                confidence: confidencePercent,
+                score: rawScore, // Store normalized 0-1 score
                 type: isAnomaly ? 'Detected Defect' : 'None',
                 heatmapPath: data.heatmap_path,
-                originalPath: data.original_path, // Needed for report
+                hotMapPath: data.hot_map_path,
+                contourPath: data.contour_path,
+                originalPath: data.original_path,
                 threshold: data.threshold,
-                modelVersion: data.model_version,
+                modelVersion: data.model_version || 'v1.0',
+                category: data.category || location.state.category || 'bottle',
                 timestamp: data.created_at || new Date().toISOString(),
                 details: {
                     width: data.width,
@@ -49,59 +117,45 @@ const Results = () => {
             });
             setLoading(false);
         } else {
-            // Fallback / Demo mode if no state
-            // Simulate API loading delay
+            // Fallback mock
             const timer = setTimeout(() => {
                 setLoading(false);
-                if (!location.state?.image) {
-                    // Demo data
-                    setResult({
-                        status: "Upload Image to Check Status",
-                        confidence: '0',
-                        score: 0,
-                        type: 'Demo Defect',
-                        heatmapPath: null // No heatmap for demo
-                    });
-                } else {
-                    // Mock data if image exists but no result (edge case)
-                    setResult({
-                        status: 'Normal',
-                        confidence: '98.00',
-                        score: 0.98,
-                        type: 'None',
-                        heatmapPath: null
-                    });
-                }
+                setResult({
+                    status: 'Normal',
+                    confidence: 12,
+                    score: 0.12,
+                    type: 'None',
+                    heatmapPath: null,
+                    hotMapPath: null,
+                    contourPath: null,
+                    category: 'bottle',
+                    threshold: 0.60
+                });
             }, 1000);
             return () => clearTimeout(timer);
         }
     }, [location.state, navigate]);
 
+    // Report Generation
     const generatePDF = () => {
-        if (!result || result.score <= 0) {
-            alert("Report can only be generated when anomaly score is greater than 0.");
-            return;
-        }
+        if (!result) return;
 
         const doc = new jsPDF();
         const timestamp = new Date(result.timestamp).toLocaleString();
 
-        // Header with stylized Logo
-        doc.setFillColor(30, 41, 59); // Dark blue header
+        doc.setFillColor(30, 41, 59);
         doc.rect(0, 0, 210, 40, 'F');
 
-        // Stylized "Shield" Logo (Red Square with white S)
-        doc.setFillColor(239, 68, 68); // Red-500
+        doc.setFillColor(99, 102, 241); // indigo-500
         doc.roundedRect(14, 12, 16, 16, 3, 3, 'F');
         doc.setFontSize(14);
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
-        doc.text('A', 19, 24);
+        doc.text('AD', 17, 24);
 
         doc.setFontSize(20);
         doc.text('ANOMALY ANALYSIS REPORT', 105, 25, { align: 'center' });
 
-        // Summary Block - Compact for single page
         doc.setFillColor(248, 250, 252);
         doc.rect(14, 45, 182, 25, 'F');
         doc.setDrawColor(226, 232, 240);
@@ -114,19 +168,17 @@ const Results = () => {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.text(`Status: ${result.status.toUpperCase()}`, 20, 62);
-        doc.text(`Confidence: ${result.confidence}%`, 85, 62);
-        doc.text(`Model: ${result.modelVersion || 'v2.5'}`, 150, 62);
+        doc.text(`Score: ${result.confidence}%`, 85, 62);
+        doc.text(`Category: ${result.category.toUpperCase()}`, 150, 62);
 
-        // Detailed Data Table
         const tableData = [
-            ['Metric', 'Detailed Information'],
+            ['Metric', 'Information'],
             ['Original Filename', displayFileName],
-            ['Anomaly Type', result.type],
-            ['Analysis Score', `${result.confidence}%`],
-            ['Threshold', result.threshold || '0.60'],
+            ['Category', result.category],
+            ['Status', result.status],
+            ['Anomaly Score', `${result.confidence}%`],
+            ['Detection Threshold', result.threshold || '0.60'],
             ['Date & Time', timestamp],
-            ['Image Path', result.originalPath || 'N/A'],
-            ['Resolution', result.details?.width ? `${result.details.width}x${result.details.height}` : 'N/A']
         ];
 
         autoTable(doc, {
@@ -134,54 +186,29 @@ const Results = () => {
             head: [tableData[0]],
             body: tableData.slice(1),
             theme: 'grid',
-            headStyles: {
-                fillColor: [59, 130, 246],
-                fontSize: 11,
-                halign: 'center'
-            },
-            bodyStyles: {
-                fontSize: 9,
-                cellPadding: 4
-            },
-            columnStyles: {
-                0: { cellWidth: 45, fontStyle: 'bold' },
-                1: { cellWidth: 'auto' }
-            },
-            margin: { bottom: 20 } // Ensure footer fits
+            headStyles: { fillColor: [99, 102, 241] },
         });
 
-        // Footer - Compact
-        const finalY = doc.lastAutoTable.finalY + 15;
-        doc.setDrawColor(200, 200, 200);
-        doc.line(14, finalY, 196, finalY);
-
-        doc.setFontSize(8);
-        doc.setTextColor(150);
-        doc.text('This report is electronically generated by the AI Anomaly Detection System.', 105, finalY + 8, { align: 'center' });
-        doc.text('Anomaly.AI - Integrity Monitoring - 2026', 105, finalY + 13, { align: 'center' });
-
-        doc.save(`Anomaly_Report_${location.state?.analysisResult?.id || 'RES'}.pdf`);
+        doc.save(`Anomaly_Report_${Date.now()}.pdf`);
     };
 
     const shareViaGmail = () => {
         const subject = encodeURIComponent(`Anomaly Detection Report: ${result.status}`);
         const body = encodeURIComponent(
             `Analysis Results for ${displayFileName}:\n\n` +
+            `Category: ${result.category}\n` +
             `Status: ${result.status}\n` +
-            `Score: ${result.confidence}/100\n` +
-            `Time: ${new Date(result.timestamp).toLocaleString()}\n` +
-            `Type: ${result.type}\n\n` +
-            `Report generated via Anomaly.AI`
+            `Score: ${result.confidence}%\n` +
+            `Time: ${new Date(result.timestamp).toLocaleString()}\n\n` +
+            `Generated via AnomalyDetect AI`
         );
         window.open(`https://mail.google.com/mail/?view=cm&fs=1&tf=1&to=&su=${subject}&body=${body}`, '_blank');
     };
 
-    // Construct display data with fallbacks
     const getFullUrl = (path) => {
         if (!path) return '';
         if (path.startsWith('http') || path.startsWith('data:')) return path;
-        // Use proxy-friendly relative path
-        return path;
+        return `${API_BASE}${path.startsWith('/') ? path : '/' + path}`;
     };
 
     const displayImage = location.state?.image ? getFullUrl(location.state.image) : location.state?.analysisResult?.original_path ? getFullUrl(location.state.analysisResult.original_path) : '';
@@ -190,14 +217,9 @@ const Results = () => {
     if (loading) {
         return (
             <div className="max-w-6xl mx-auto space-y-8">
-                <div className="flex items-center justify-between">
-                    <div className="h-8 w-48 bg-zinc-800 rounded animate-pulse"></div>
-                </div>
+                <div className="h-8 w-48 bg-zinc-800 rounded animate-pulse"></div>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-4">
-                        <div className="h-[400px] bg-zinc-900 rounded-xl border border-zinc-800 animate-pulse"></div>
-                        <div className="h-24 bg-zinc-900 rounded-lg animate-pulse"></div>
-                    </div>
+                    <div className="lg:col-span-2 h-[400px] bg-zinc-900 rounded-xl animate-pulse" />
                     <div className="space-y-6">
                         <SkeletonCard />
                         <SkeletonCard />
@@ -213,10 +235,11 @@ const Results = () => {
 
     return (
         <div className="max-w-6xl mx-auto space-y-8">
+            {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
-                    <Link to="/upload" className="p-2 hover:bg-zinc-800 rounded-full transition-colors">
-                        <ArrowLeft className="text-zinc-400 hover:text-white" />
+                    <Link to="/upload" className="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-colors border border-zinc-800">
+                        <ArrowLeft className="text-zinc-400 hover:text-white" size={20} />
                     </Link>
                     <h1 className="text-2xl font-bold text-white">Analysis Results</h1>
                 </div>
@@ -225,167 +248,128 @@ const Results = () => {
                         onClick={shareViaGmail}
                         className="flex items-center px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-300 hover:bg-zinc-800 transition-colors"
                     >
-                        <Share2 size={18} className="mr-2" />
-                        Share
+                        <Share2 size={18} className="mr-2" /> Share
                     </button>
                     <button
                         onClick={generatePDF}
-                        className={clsx(
-                            "flex items-center px-4 py-2 rounded-lg transition-colors font-medium",
-                            result.score > 0 ? "bg-white text-black hover:bg-zinc-200" : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                        )}
+                        className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors font-medium shadow-lg shadow-indigo-900/20"
                     >
-                        <Download size={18} className="mr-2" />
-                        Export Report
+                        <Download size={18} className="mr-2" /> Export PDF
                     </button>
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Image Section */}
-                <div
-                    className="lg:col-span-2 space-y-4 animate-in fade-in slide-in-from-left-4 duration-500"
-                >
-
+                {/* ── Left: Image Section ────────────────────────────────────────── */}
+                <div className="lg:col-span-2 space-y-4 animate-in fade-in slide-in-from-left-4 duration-500">
                     <div className="bg-zinc-900 rounded-xl shadow-sm border border-zinc-800 overflow-hidden">
-                        <div className="p-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
-                            <span className="font-medium text-zinc-300">{displayFileName}</span>
-                            <div className="flex bg-zinc-900 rounded-lg p-1 border border-zinc-800">
-                                <button
-                                    onClick={() => setViewMode('original')}
-                                    className={clsx(
-                                        "px-3 py-1 text-xs font-medium rounded-md transition-all",
-                                        viewMode === 'original' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300"
-                                    )}
-                                >
-                                    Original Image
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('heatmap')}
-                                    className={clsx(
-                                        "px-3 py-1 text-xs font-medium rounded-md transition-all",
-                                        viewMode === 'heatmap' ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-500 hover:text-zinc-300"
-                                    )}
-                                    disabled={!result.heatmapPath}
-                                >
-                                    Heatmap Overlay
-                                </button>
+                        <div className="p-4 border-b border-zinc-800 flex flex-wrap gap-4 justify-between items-center bg-zinc-900/80">
+                            <div className="flex items-center gap-3">
+                                <span className="font-medium text-white max-w-[200px] truncate" title={displayFileName}>
+                                    {displayFileName}
+                                </span>
+                                {/* Category Badge */}
+                                <div className="flex items-center gap-1.5 px-2.5 py-1 bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 rounded-md text-xs font-semibold capitalize">
+                                    <Tag size={12} />
+                                    {result.category}
+                                </div>
                             </div>
+
                         </div>
-                        <div className="relative aspect-video bg-slate-900 flex items-center justify-center overflow-hidden group">
-                            {/* Original Image */}
-                            <img
-                                src={displayImage}
-                                alt="Analyzed"
-                                className="absolute inset-0 w-full h-full object-contain"
-                            />
 
-                            {/* Heatmap Overlay */}
-                            {viewMode === 'heatmap' && result.heatmapPath && (
-                                <img
-                                    src={getFullUrl(result.heatmapPath)}
-                                    alt="Heatmap"
-                                    className="absolute inset-0 w-full h-full object-contain pointer-events-none mix-blend-normal opacity-70 animate-in fade-in duration-300"
-                                />
-                            )}
+                        {/* 4-Panel Image Grid */}
+                        <div className="bg-[#09090b] p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            
+                            {/* Panel 1 */}
+                            <div className="flex flex-col gap-2 group">
+                                <h4 className="text-zinc-400 text-xs font-semibold uppercase tracking-wider pl-1 font-mono">1. Original Image</h4>
+                                <div className="relative bg-black rounded-lg overflow-hidden border border-zinc-800 p-2 flex items-center justify-center h-[280px]">
+                                    <img src={displayImage} alt="Original" className="max-h-full w-auto object-contain rounded isolate transition-transform duration-300 group-hover:scale-105" onError={(e) => { e.target.src = 'https://placehold.co/600x400/18181b/52525b?text=Unavailable' }} />
+                                </div>
+                            </div>
+                            
+                            {/* Panel 2 */}
+                            <div className="flex flex-col gap-2 group">
+                                <h4 className="text-zinc-400 text-xs font-semibold uppercase tracking-wider pl-1 font-mono">2. Anomaly Map (Hot)</h4>
+                                <div className="relative bg-black rounded-lg overflow-hidden border border-zinc-800 p-2 flex items-center justify-center h-[280px]">
+                                    {result.hotMapPath ? <img src={getFullUrl(result.hotMapPath)} alt="Hot Map" className="max-h-full w-auto object-contain rounded isolate transition-transform duration-300 group-hover:scale-105" /> : <div className="text-zinc-600 text-xs flex flex-col items-center"><Maximize2 className="mb-2 opacity-50"/> Not Available</div>}
+                                </div>
+                            </div>
 
-                            <button className="absolute bottom-4 right-4 p-2 bg-black/50 text-white rounded-lg opacity-0 group-hover:opacity-100 transition-opacity hover:bg-black/70">
-                                <Maximize2 size={20} />
-                            </button>
+                            {/* Panel 3 */}
+                            <div className="flex flex-col gap-2 group">
+                                <h4 className="text-zinc-400 text-xs font-semibold uppercase tracking-wider pl-1 font-mono">3. Heatmap Overlay</h4>
+                                <div className="relative bg-black rounded-lg overflow-hidden border border-zinc-800 p-2 flex items-center justify-center h-[280px]">
+                                    {result.heatmapPath ? <img src={getFullUrl(result.heatmapPath)} alt="Overlay" className="max-h-full w-auto object-contain rounded isolate transition-transform duration-300 group-hover:scale-105" /> : <div className="text-zinc-600 text-xs flex flex-col items-center"><Maximize2 className="mb-2 opacity-50"/> Not Available</div>}
+                                </div>
+                            </div>
+
+                            {/* Panel 4 */}
+                            <div className="flex flex-col gap-2 group">
+                                <h4 className="text-zinc-400 text-xs font-semibold uppercase tracking-wider pl-1 font-mono">4. Red Contour</h4>
+                                <div className="relative bg-black rounded-lg overflow-hidden border border-zinc-800 p-2 flex items-center justify-center h-[280px]">
+                                    {result.contourPath ? <img src={getFullUrl(result.contourPath)} alt="Contour" className="max-h-full w-auto object-contain rounded isolate transition-transform duration-300 group-hover:scale-105" /> : <div className="text-zinc-600 text-xs flex flex-col items-center"><Maximize2 className="mb-2 opacity-50"/> Not Available</div>}
+                                </div>
+                            </div>
+
                         </div>
                     </div>
 
-                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-                        <h3 className="font-medium text-blue-400 mb-2">AI Analysis Explanation</h3>
-                        <p className="text-sm text-blue-300/80">
-                            The model (version {result.modelVersion || 'v1.0'}) analyzed the image.
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
+                        <p className="text-sm text-zinc-400">
+                            Model <span className="text-zinc-300 font-mono">({result.modelVersion})</span> analyzed this <span className="text-white capitalize font-semibold">{result.category}</span> image.
                             {isAnomaly
-                                ? ` It detected anomalies with a confidence score of ${result.confidence}%. The red regions in the heatmap indicate potential defects.`
-                                : " No significant anomalies were detected. The image appears normal."}
+                                ? ` Defect regions are highlighted in warmer colors (red/yellow) on the heatmap overlay. Score exceeded threshold (${result.threshold}).`
+                                : ` No significant discrepancies found. Structural integrity matches baseline standards (Score < ${result.threshold}).`}
                         </p>
                     </div>
                 </div>
 
 
-                {/* Results Panel */}
-                <div
-                    className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500"
-                    style={{ animationDelay: '200ms', animationFillMode: 'both' }}
-                >
-
-                    {/* Status Card */}
+                {/* ── Right: Results Panel ────────────────────────────────────────── */}
+                <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500" style={{ animationDelay: '200ms', animationFillMode: 'both' }}>
+                    
+                    {/* Status Summary */}
                     <div className={clsx(
-                        "rounded-xl p-6 border shadow-sm",
+                        "rounded-xl p-6 border shadow-sm relative overflow-hidden",
                         isAnomaly ? "bg-red-500/10 border-red-500/20" : "bg-green-500/10 border-green-500/20"
                     )}>
-                        <div className="flex items-center justify-between mb-4">
-                            <h3 className={clsx(
-                                "text-lg font-bold",
-                                isAnomaly ? "text-red-500" : "text-green-500"
-                            )}>
-                                Detection Status
-                            </h3>
-                            {isAnomaly ? (
-                                <AlertTriangle className="text-red-600" size={28} />
-                            ) : (
-                                <CheckCircle className="text-green-600" size={28} />
-                            )}
-                        </div>
-
-                        <div className="text-3xl font-bold mb-1 text-white">
-                            {result.status}
-                        </div>
+                        {/* Background Glow */}
                         <div className={clsx(
-                            "text-sm font-medium",
-                            isAnomaly ? "text-red-400" : "text-green-400"
-                        )}>
-                            {isAnomaly ? "Potential Defect Detected" : "No Anomalies Found"}
-                        </div>
-                    </div>
+                            "absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl opacity-20 pointer-events-none",
+                            isAnomaly ? "bg-red-500" : "bg-green-500"
+                        )} />
 
-                    {/* Confidence Card */}
-                    <div className="bg-zinc-900 rounded-xl shadow-sm border border-zinc-800 p-6">
-                        <h3 className="text-lg font-bold text-white mb-4">Anomaly Score</h3>
-                        <div className="flex items-end justify-between mb-2">
-                            <span className={clsx(
-                                "text-3xl font-bold",
-                                isAnomaly ? "text-red-500" : "text-green-500"
-                            )}>{result.confidence}</span>
-                            <span className="text-sm text-zinc-500 mb-1">Score (0-100)</span>
-                        </div>
-                        <div className="w-full bg-zinc-800 rounded-full h-3 mb-2">
-                            <div
-                                className={clsx(
-                                    "h-3 rounded-full transition-all duration-1000",
-                                    isAnomaly ? "bg-red-500" : "bg-green-500"
-                                )}
-                                style={{
-                                    width: `${result.confidence}%`,
-                                    transitionDelay: '500ms'
-                                }}
-                            />
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-bold text-zinc-300 uppercase tracking-wider">
+                                Inspection Result
+                            </h3>
                         </div>
 
-                        <p className="text-xs text-zinc-500 mt-4">
-                            <strong>Details:</strong><br />
-                            Threshold: {result.threshold}<br />
-                            Model: {result.modelVersion}<br />
-                            Pixels: {result.details?.width || 'N/A'}x{result.details?.height || 'N/A'}
+                        <div className="flex items-center gap-3 mb-1">
+                            {isAnomaly ? <span className="text-red-500 font-bold text-3xl">Anomaly</span> : <span className="text-green-500 font-bold text-3xl">Normal</span>}
+                        </div>
+                        <p className="text-sm text-zinc-400">
+                            {isAnomaly ? 'Potential defect or damage identified.' : 'Image conforms to safety standards.'}
                         </p>
                     </div>
 
+                    {/* Gauge Chart Card */}
+                    <div className="bg-zinc-900 rounded-xl shadow-sm border border-zinc-800 p-6 flex flex-col items-center">
+                        <ScoreGauge score={result.confidence} />
+                    </div>
+
                     {/* Action Buttons */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 pt-2">
                         <button
                             onClick={() => navigate('/upload')}
-                            className="w-full flex items-center justify-center px-4 py-3 bg-white text-black rounded-lg hover:bg-zinc-200 transition-colors shadow-lg hover:shadow-xl font-medium"
+                            className="w-full flex items-center justify-center px-4 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors font-semibold shadow-lg shadow-indigo-900/20"
                         >
-                            <RefreshCw size={20} className="mr-2" />
-                            Analyze Another Image
+                            <RefreshCw size={18} className="mr-2" /> Check Another Image
                         </button>
-                        <Link to="/history">
-                            <button className="w-full px-4 py-3 bg-zinc-900 border border-zinc-700 text-zinc-300 rounded-lg hover:bg-zinc-800 transition-colors mt-3">
-                                View History
+                        <Link to="/history" className="block w-full">
+                            <button className="w-full flex justify-center px-4 py-3 bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 rounded-lg transition-colors font-medium">
+                                View Full History
                             </button>
                         </Link>
                     </div>

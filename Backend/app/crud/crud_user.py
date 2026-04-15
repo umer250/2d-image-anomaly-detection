@@ -10,8 +10,8 @@ def get_user(db: Session, user_id: int) -> Optional[User]:
     return db.query(User).filter(User.id == user_id).first()
 
 def get_user_by_email(db: Session, email: str) -> Optional[User]:
-    """Get user by email."""
-    return db.query(User).filter(User.email == email).first()
+    """Get user by email (case-insensitive)."""
+    return db.query(User).filter(User.email.ilike(email)).first()
 
 def get_all_users(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
     """Get all users with pagination (admin only), ordered by ID."""
