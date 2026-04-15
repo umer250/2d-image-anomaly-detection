@@ -27,6 +27,5 @@ Backend/static/heatmaps/
 .DS_Store
 search_results.csv
 
-# Scratch / temp
-Backend/scratch/
-static/
+# ML Models (large binary files - store separately)
+Backend/ml_models/*.pkl
