@@ -2,6 +2,7 @@
 Frontend/node_modules/
 Frontend/dist/
 Frontend/.env
+Frontend/src/public/
 
 # Python
 __pycache__/
@@ -24,3 +25,8 @@ Backend/static/heatmaps/
 # Misc
 *.log
 .DS_Store
+search_results.csv
+
+# Scratch / temp
+Backend/scratch/
+static/
