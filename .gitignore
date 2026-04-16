@@ -12,11 +12,12 @@ __pycache__/
 Backend/venv/
 Backend/.env
 
-# Local Data
+# Local Data — uploads & generated heatmaps (not committed)
 Backend/uploads/
 Backend/heatmaps/
 Backend/static/uploads/
 Backend/static/heatmaps/
+static/
 
 # IDEs
 .vscode/
@@ -27,5 +28,5 @@ Backend/static/heatmaps/
 .DS_Store
 search_results.csv
 
-# ML Models (large binary files - store separately)
+# ML Models (large binary files — store separately or via Git LFS)
 Backend/ml_models/*.pkl

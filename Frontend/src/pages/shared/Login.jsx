@@ -50,9 +50,9 @@ const Login = () => {
                     Sign in to your account
                 </h2>
                 <p className="mt-2 text-center text-sm text-zinc-400">
-                    Or{' '}
+                    Don't have an account?{' '}
                     <Link to="/register" className="font-medium text-white hover:text-zinc-300 underline underline-offset-4">
-                        create a new account
+                        Create one
                     </Link>
                 </p>
             </div>

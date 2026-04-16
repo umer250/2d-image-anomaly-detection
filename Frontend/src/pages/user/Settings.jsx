@@ -29,7 +29,7 @@ const Settings = () => {
     const [activeTab, setActiveTab] = useState('profile');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState({ type: '', text: '' });
-    const [showPasswords, setShowPasswords] = useState({ current: false, new: false });
+    const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
     const [isVerified, setIsVerified] = useState(false);
 
     // Profile State
@@ -328,13 +328,22 @@ const Settings = () => {
                                             </div>
                                             <div className="space-y-1.5">
                                                 <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Confirm Key</label>
-                                                <input
-                                                    type="password"
-                                                    value={passwordData.confirm_password}
-                                                    onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
-                                                    placeholder="••••••••"
-                                                    className="w-full bg-black border border-zinc-800 rounded-lg py-2 px-4 text-sm text-white focus:border-white/20 outline-none"
-                                                />
+                                                <div className="relative">
+                                                    <input
+                                                        type={showPasswords.confirm ? "text" : "password"}
+                                                        value={passwordData.confirm_password}
+                                                        onChange={(e) => setPasswordData({ ...passwordData, confirm_password: e.target.value })}
+                                                        placeholder="••••••••"
+                                                        className="w-full bg-black border border-zinc-800 rounded-lg py-2 px-4 pr-10 text-sm text-white focus:border-white/20 outline-none"
+                                                    />
+                                                    <button
+                                                        onClick={() => setShowPasswords({ ...showPasswords, confirm: !showPasswords.confirm })}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-400"
+                                                        type="button"
+                                                    >
+                                                        {showPasswords.confirm ? <EyeOff size={14} /> : <Eye size={14} />}
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
 

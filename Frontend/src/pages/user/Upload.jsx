@@ -74,6 +74,15 @@ const Upload = () => {
 
     const [selectedCategory, setSelectedCategory] = useState('bottle');
     const [removeBg, setRemoveBg] = useState(false);
+    const [modelThreshold, setModelThreshold] = useState(0.7544); // default from bottle_config.json
+    const [qualityWarning, setQualityWarning] = useState('');
+
+    // Fetch model threshold on mount
+    React.useEffect(() => {
+        import('../../services/mlApi').then(({ mlAPI }) => {
+            mlAPI.getModelInfo().catch(() => {});
+        });
+    }, []);
 
     // ── Drag & drop handlers ──────────────────────────────────────────────────
     const handleDrag = (e) => {
@@ -115,6 +124,7 @@ const Upload = () => {
         setFile(null);
         setPreview(null);
         setApiThreshold(null);
+        setQualityWarning('');
         if (fileInputRef.current) fileInputRef.current.value = '';
     };
 
@@ -138,6 +148,13 @@ const Upload = () => {
             );
 
             setApiThreshold(result.threshold);
+            setModelThreshold(result.threshold);
+
+            // Show quality warning if image was blurry
+            if (result.image_quality?.message) {
+                setQualityWarning(result.image_quality.message);
+            }
+
             setAnalyzing(false);
 
             navigate('/results', {
@@ -262,6 +279,14 @@ const Upload = () => {
                                     <p className="text-sm text-red-400">{error}</p>
                                 </div>
                             )}
+
+                            {/* Quality warning */}
+                            {qualityWarning && (
+                                <div className="mt-4 p-4 rounded-md bg-yellow-500/10 border border-yellow-500/20 flex items-center">
+                                    <AlertCircle className="h-5 w-5 text-yellow-400 mr-3 flex-shrink-0" />
+                                    <p className="text-sm text-yellow-400">{qualityWarning} — results may be less accurate.</p>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -300,7 +325,9 @@ const Upload = () => {
                                     Isolate Object
                                 </label>
                                 <p className="text-xs text-zinc-500 mt-0.5 max-w-[200px]">
-                                    Remove background noise before analysis.
+                                    {removeBg
+                                        ? 'Background removed — white background applied before analysis.'
+                                        : 'Turn ON if your image has a non-white or cluttered background.'}
                                 </p>
                             </div>
                             <button
@@ -321,7 +348,7 @@ const Upload = () => {
                             </button>
                         </div>
 
-                        {/* Threshold display — real value after analysis */}
+                        {/* Threshold display — real-time from model */}
                         <div>
                             <label className="block text-sm font-medium text-zinc-400 mb-2">
                                 Anomaly Threshold
@@ -329,10 +356,10 @@ const Upload = () => {
                             <div className="flex items-center gap-3 bg-zinc-800/60 border border-zinc-700 rounded-md py-2.5 px-3">
                                 <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
                                 <span className="text-white text-sm font-mono">
-                                    {apiThreshold != null ? apiThreshold.toFixed(2) : '0.60'}
+                                    {(apiThreshold ?? modelThreshold).toFixed(4)}
                                 </span>
                                 <span className="text-zinc-500 text-xs ml-auto">
-                                    {apiThreshold != null ? 'from model' : 'default'}
+                                    {apiThreshold != null ? 'from model' : 'bottle default'}
                                 </span>
                             </div>
                             <p className="mt-1.5 text-xs text-zinc-500">
@@ -341,16 +368,17 @@ const Upload = () => {
                         </div>
 
                         {/* Supported formats */}
-                        <div className="bg-zinc-800/40 rounded-lg p-4 border border-zinc-700/50">
+                        <div className="bg-zinc-800/40 rounded-lg p-4 border border-zinc-700/50 space-y-2">
                             <p className="text-xs font-semibold text-zinc-400 mb-2">Supported Formats</p>
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-1.5 mb-3">
                                 {['JPG', 'JPEG', 'PNG', 'WEBP'].map((fmt) => (
-                                    <span key={fmt}
-                                        className="px-2 py-0.5 bg-zinc-700 text-zinc-300 rounded text-xs font-mono">
-                                        {fmt}
-                                    </span>
+                                    <span key={fmt} className="px-2 py-0.5 bg-zinc-700 text-zinc-300 rounded text-xs font-mono">{fmt}</span>
                                 ))}
                             </div>
+                            <p className="text-[11px] text-zinc-500 leading-relaxed">
+                                For best results: use a <strong className="text-zinc-400">plain white background</strong>, ensure the object is <strong className="text-zinc-400">centered and in focus</strong>, and the image is <strong className="text-zinc-400">clear (not blurry)</strong>.
+                                If your image has a non-white background, enable <strong className="text-zinc-400">Isolate Object</strong> above to auto-remove it.
+                            </p>
                         </div>
 
                         {/* Analyze button */}

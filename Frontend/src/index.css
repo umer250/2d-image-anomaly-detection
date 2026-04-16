@@ -11,79 +11,82 @@
     font-family: 'Inter', system-ui, sans-serif;
   }
 
-  .glass-card {
-    @apply bg-[#1e293b]/80 backdrop-blur-md border border-slate-700/50 shadow-xl transition-all duration-300;
+  /* ── All input fields use Inter ── */
+  input, textarea, select, button {
+    font-family: 'Inter', system-ui, sans-serif;
   }
 
-  .glass-card:hover {
-    @apply border-blue-500/30 shadow-[0_0_20px_rgba(59, 130, 246, 0.15)] -translate-y-1;
-  }
-
-  .accent-blue {
-    color: #3b82f6;
-  }
-
-  .accent-green {
-    color: #22c55e;
-  }
-
-  .accent-red {
-    color: #ef4444;
-  }
-
-  .bg-accent-blue {
-    background-color: #3b82f6;
-  }
-
-  .bg-accent-green {
-    background-color: #22c55e;
-  }
-
-  .bg-accent-red {
-    background-color: #ef4444;
-  }
-
-  .border-accent-blue {
-    border-color: #3b82f6;
-  }
-
-  .border-accent-green {
-    border-color: #22c55e;
-  }
-
-  .border-accent-red {
-    border-color: #ef4444;
-  }
-
-  h1,
-  h2,
-  h3,
-  h4,
-  h5,
-  h6 {
+  /* ── All headings use Outfit ── */
+  h1, h2, h3, h4, h5, h6 {
     font-family: 'Outfit', system-ui, sans-serif;
+  }
+
+  /* ── Numbers / stats use Outfit for consistent bold numerals ── */
+  .font-number {
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  /* ── Monospace values (IDs, scores, code) ── */
+  code, .font-mono {
+    font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
   }
 
   .font-outfit {
     font-family: 'Outfit', sans-serif;
   }
 
-  .interactive-text {
-    @apply transition-all duration-300;
+  .glass-card {
+    @apply bg-[#1e293b]/80 backdrop-blur-md border border-slate-700/50 shadow-xl transition-all duration-300;
   }
 
+  .glass-card:hover {
+    @apply border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.15)] -translate-y-1;
+  }
+
+  /* ── Stat card numbers ── */
+  .stat-value {
+    font-family: 'Outfit', system-ui, sans-serif;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ── Table cells ── */
+  td, th {
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  /* ── Card labels ── */
+  .card-label {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 0.625rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .accent-blue  { color: #3b82f6; }
+  .accent-green { color: #22c55e; }
+  .accent-red   { color: #ef4444; }
+
+  .bg-accent-blue  { background-color: #3b82f6; }
+  .bg-accent-green { background-color: #22c55e; }
+  .bg-accent-red   { background-color: #ef4444; }
+
+  .border-accent-blue  { border-color: #3b82f6; }
+  .border-accent-green { border-color: #22c55e; }
+  .border-accent-red   { border-color: #ef4444; }
+
+  .interactive-text { @apply transition-all duration-300; }
   .interactive-text:hover {
     @apply text-white scale-[1.02];
     text-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
   }
 
-  .glow-text-red {
-    text-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
-  }
-
-  .glow-text-green {
-    text-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
-  }
+  .glow-text-red   { text-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+  .glow-text-green { text-shadow: 0 0 10px rgba(34, 197, 94, 0.5); }
 }
 
 /* Landing page scanner animation */

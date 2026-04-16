@@ -37,8 +37,12 @@ def read_history(
             "status": record.status,
             "score": record.score,
             "heatmap_path": record.heatmap_path,
+            "hot_map_path": getattr(record, 'hot_map_path', None),
+            "contour_path": getattr(record, 'contour_path', None),
+            "comparison_path": getattr(record, 'comparison_path', None),
             "threshold": record.threshold,
             "model_version": record.model_version,
+            "category": getattr(record, 'category', 'bottle'),
             "upload_date": record.created_at
         }
         result.append(item)

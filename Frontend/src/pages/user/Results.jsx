@@ -7,27 +7,17 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // ── Gauge Component ───────────────────────────────────────────────────────────
-const ScoreGauge = ({ score }) => {
-    // Score is 0 to 100
+const ScoreGauge = ({ score, isAnomaly }) => {
     const [animatedScore, setAnimatedScore] = useState(0);
 
     useEffect(() => {
-        const timer = setTimeout(() => {
-            setAnimatedScore(score);
-        }, 100);
+        const timer = setTimeout(() => setAnimatedScore(score), 100);
         return () => clearTimeout(timer);
     }, [score]);
 
-    // Color logic
-    let colorClass = 'text-green-500';
-    let strokeColor = '#22c55e'; // green-500
-    if (score >= 70) {
-        colorClass = 'text-red-500';
-        strokeColor = '#ef4444'; // red-500
-    } else if (score >= 40) {
-        colorClass = 'text-yellow-500';
-        strokeColor = '#eab308'; // yellow-500
-    }
+    // Color based on anomaly status, not just score value
+    const strokeColor = isAnomaly ? '#ef4444' : '#22c55e';
+    const colorClass = isAnomaly ? 'text-red-500' : 'text-green-500';
 
     const radius = 50;
     const circumference = Math.PI * radius; // Half circle
@@ -117,21 +107,21 @@ const Results = () => {
             });
             setLoading(false);
         } else {
-            // Fallback mock
+            // No result state — show 0 score (not random)
             const timer = setTimeout(() => {
                 setLoading(false);
                 setResult({
                     status: 'Normal',
-                    confidence: 12,
-                    score: 0.12,
+                    confidence: 0,
+                    score: 0,
                     type: 'None',
                     heatmapPath: null,
                     hotMapPath: null,
                     contourPath: null,
                     category: 'bottle',
-                    threshold: 0.60
+                    threshold: 0.7544
                 });
-            }, 1000);
+            }, 500);
             return () => clearTimeout(timer);
         }
     }, [location.state, navigate]);
@@ -140,56 +130,200 @@ const Results = () => {
     const generatePDF = () => {
         if (!result) return;
 
-        const doc = new jsPDF();
-        const timestamp = new Date(result.timestamp).toLocaleString();
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        const pageW = 210;
+        const margin = 14;
+        const contentW = pageW - margin * 2;
+        const ts = result.timestamp ? new Date(result.timestamp).toLocaleString() : new Date().toLocaleString();
+        const scoreRaw = result.score ?? 0;
+        const scorePct = result.confidence ?? Math.round(scoreRaw * 100);
+        const thresholdRaw = result.threshold ?? 0.7544;
+        const thresholdPct = (thresholdRaw * 100).toFixed(2);
+        const isAnom = result.status === 'Anomaly';
 
-        doc.setFillColor(30, 41, 59);
-        doc.rect(0, 0, 210, 40, 'F');
+        // ── Header bar ──────────────────────────────────────────────────────
+        doc.setFillColor(15, 15, 15);
+        doc.rect(0, 0, pageW, 28, 'F');
 
-        doc.setFillColor(99, 102, 241); // indigo-500
-        doc.roundedRect(14, 12, 16, 16, 3, 3, 'F');
-        doc.setFontSize(14);
+        // Logo box
+        doc.setFillColor(99, 102, 241);
+        doc.roundedRect(margin, 6, 16, 16, 2, 2, 'F');
+        doc.setFontSize(9);
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
-        doc.text('AD', 17, 24);
+        doc.text('AD', margin + 4, 17);
 
-        doc.setFontSize(20);
-        doc.text('ANOMALY ANALYSIS REPORT', 105, 25, { align: 'center' });
-
-        doc.setFillColor(248, 250, 252);
-        doc.rect(14, 45, 182, 25, 'F');
-        doc.setDrawColor(226, 232, 240);
-        doc.rect(14, 45, 182, 25);
-
-        doc.setFontSize(12);
-        doc.setTextColor(30, 41, 59);
-        doc.text('ANALYSIS SUMMARY', 20, 53);
-
-        doc.setFontSize(10);
+        // Title
+        doc.setFontSize(16);
+        doc.setTextColor(255, 255, 255);
+        doc.text('2D Image Anomaly Detection', margin + 22, 13);
+        doc.setFontSize(8);
         doc.setFont('helvetica', 'normal');
-        doc.text(`Status: ${result.status.toUpperCase()}`, 20, 62);
-        doc.text(`Score: ${result.confidence}%`, 85, 62);
-        doc.text(`Category: ${result.category.toUpperCase()}`, 150, 62);
+        doc.setTextColor(160, 160, 160);
+        doc.text('PatchCore · WideResNet-50 · MVTec AD Benchmark', margin + 22, 20);
 
-        const tableData = [
-            ['Metric', 'Information'],
-            ['Original Filename', displayFileName],
-            ['Category', result.category],
-            ['Status', result.status],
-            ['Anomaly Score', `${result.confidence}%`],
-            ['Detection Threshold', result.threshold || '0.60'],
-            ['Date & Time', timestamp],
-        ];
+        // Date top-right
+        doc.setFontSize(7);
+        doc.setTextColor(120, 120, 120);
+        doc.text(`Generated: ${ts}`, pageW - margin, 10, { align: 'right' });
+
+        // ── Status banner ────────────────────────────────────────────────────
+        const bannerColor = isAnom ? [220, 38, 38] : [22, 163, 74];
+        doc.setFillColor(...bannerColor);
+        doc.rect(0, 28, pageW, 12, 'F');
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(255, 255, 255);
+        doc.text(
+            isAnom ? `⚠  ANOMALY DETECTED  —  Score: ${scorePct}%  |  Threshold: ${thresholdPct}%`
+                   : `✓  NORMAL  —  Score: ${scorePct}%  |  Threshold: ${thresholdPct}%`,
+            pageW / 2, 36, { align: 'center' }
+        );
+
+        let y = 48;
+
+        // ── Analysis Details table ───────────────────────────────────────────
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 30, 30);
+        doc.text('Analysis Details', margin, y);
+        y += 4;
 
         autoTable(doc, {
-            startY: 75,
-            head: [tableData[0]],
-            body: tableData.slice(1),
+            startY: y,
+            margin: { left: margin, right: margin },
+            tableWidth: contentW,
+            head: [['Field', 'Value']],
+            body: [
+                ['Image Filename', displayFileName],
+                ['Category', result.category?.toUpperCase() || 'BOTTLE'],
+                ['Detection Result', result.status],
+                ['Anomaly Score', `${scorePct}% (raw: ${scoreRaw.toFixed(6)})`],
+                ['Decision Threshold', `${thresholdPct}% (raw: ${thresholdRaw.toFixed(6)})`],
+                ['Model Version', result.modelVersion || 'PatchCore-WideResNet50-v1'],
+                ['Analysis Date & Time', ts],
+            ],
             theme: 'grid',
-            headStyles: { fillColor: [99, 102, 241] },
+            headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+            bodyStyles: { fontSize: 9, textColor: [30, 30, 30] },
+            alternateRowStyles: { fillColor: [248, 248, 255] },
+            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 55 } },
         });
 
-        doc.save(`Anomaly_Report_${Date.now()}.pdf`);
+        y = doc.lastAutoTable.finalY + 8;
+
+        // ── Model & Scoring Methodology ──────────────────────────────────────
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 30, 30);
+        doc.text('Model & Scoring Methodology', margin, y);
+        y += 4;
+
+        autoTable(doc, {
+            startY: y,
+            margin: { left: margin, right: margin },
+            tableWidth: contentW,
+            head: [['Component', 'Detail']],
+            body: [
+                ['Algorithm', 'PatchCore (Memory-Bank K-NN)'],
+                ['Backbone', 'WideResNet-50 (wide_resnet50_2)'],
+                ['Feature Layers', 'layer2 + layer3 (1536-dim embeddings)'],
+                ['Patch Size', '28 × 28 patches per image'],
+                ['Coreset Ratio', '10% of training patches stored in memory bank'],
+                ['K Neighbours', '9-NN average distance per patch'],
+                ['Input Size', '224 × 224 px — ImageNet normalization'],
+                ['Training Dataset', 'MVTec AD — Bottle category'],
+                ['Image AUROC', '99.84%'],
+                ['Pixel AUROC', '98.17%'],
+            ],
+            theme: 'grid',
+            headStyles: { fillColor: [55, 65, 81], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+            bodyStyles: { fontSize: 8.5, textColor: [30, 30, 30] },
+            alternateRowStyles: { fillColor: [248, 248, 248] },
+            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 55 } },
+        });
+
+        y = doc.lastAutoTable.finalY + 8;
+
+        // ── Scoring Formula ──────────────────────────────────────────────────
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(30, 30, 30);
+        doc.text('Scoring Formula & Decision Logic', margin, y);
+        y += 5;
+
+        const formulaLines = [
+            '1. FEATURE EXTRACTION',
+            '   WideResNet-50 processes the 224×224 image. Patch embeddings are extracted from',
+            '   layer2 and layer3, then concatenated → 1536-dim vector per patch (28×28 grid).',
+            '',
+            '2. K-NN DISTANCE SCORING (per patch)',
+            '   For each of the 784 patches, compute the average distance to its 9 nearest',
+            '   neighbours in the memory bank (coreset of normal training patches):',
+            '   patch_score(p) = (1/9) × Σ ||p − m_k||₂   for k = 1..9',
+            '',
+            '3. IMAGE-LEVEL SCORE',
+            '   The image anomaly score is the maximum patch score across all patches:',
+            '   raw_max = max { patch_score(p) : p ∈ patches }',
+            '',
+            '4. NORMALIZATION',
+            '   The raw score is normalized to [0, 1] using the formula:',
+            '   anomaly_score = raw_max / (raw_max + 1)',
+            `   This image: raw_max → normalized score = ${scoreRaw.toFixed(6)}  (${scorePct}%)`,
+            '',
+            '5. DECISION',
+            `   If anomaly_score > threshold  →  ANOMALY`,
+            `   If anomaly_score ≤ threshold  →  NORMAL`,
+            `   Threshold = ${thresholdRaw.toFixed(6)}  (${thresholdPct}%)`,
+            `   This image score = ${scoreRaw.toFixed(6)}  →  ${isAnom ? 'ANOMALY DETECTED ⚠' : 'NORMAL ✓'}`,
+        ];
+
+        doc.setFontSize(8.2);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(40, 40, 40);
+
+        // Light background box for formula
+        doc.setFillColor(245, 245, 255);
+        doc.setDrawColor(200, 200, 230);
+        doc.roundedRect(margin, y - 2, contentW, formulaLines.length * 4.8 + 4, 2, 2, 'FD');
+
+        formulaLines.forEach((line) => {
+            const isBold = /^\d\./.test(line.trim());
+            doc.setFont('helvetica', isBold ? 'bold' : 'normal');
+            doc.setTextColor(isBold ? 30 : 50, isBold ? 30 : 50, isBold ? 30 : 50);
+            doc.text(line, margin + 3, y + 2);
+            y += 4.8;
+        });
+
+        y += 6;
+
+        // ── Verdict summary ──────────────────────────────────────────────────
+        doc.setFillColor(...bannerColor, 0.1);
+        doc.setFillColor(isAnom ? 255 : 240, isAnom ? 240 : 255, isAnom ? 240 : 240);
+        doc.setDrawColor(...bannerColor);
+        doc.roundedRect(margin, y, contentW, 14, 2, 2, 'FD');
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...bannerColor);
+        doc.text(
+            isAnom
+                ? `VERDICT: Anomaly score ${scorePct}% exceeds threshold ${thresholdPct}% — defect detected.`
+                : `VERDICT: Anomaly score ${scorePct}% is below threshold ${thresholdPct}% — image is normal.`,
+            pageW / 2, y + 9, { align: 'center' }
+        );
+
+        // ── Footer ───────────────────────────────────────────────────────────
+        const pageCount = doc.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(7);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(150, 150, 150);
+            doc.text('AnomalyDetect — 2D Image Anomaly Detection System | FYP Batch 2022–2026', margin, 292);
+            doc.text(`Page ${i} of ${pageCount}`, pageW - margin, 292, { align: 'right' });
+        }
+
+        doc.save(`AnomalyReport_${displayFileName.replace(/\.[^.]+$/, '')}_${Date.now()}.pdf`);
     };
 
     const shareViaGmail = () => {
@@ -306,7 +440,7 @@ const Results = () => {
 
                             {/* Panel 4 */}
                             <div className="flex flex-col gap-2 group">
-                                <h4 className="text-zinc-400 text-xs font-semibold uppercase tracking-wider pl-1 font-mono">4. Red Contour</h4>
+                                <h4 className="text-zinc-400 text-xs font-semibold uppercase tracking-wider pl-1 font-mono">4. Defect Contours</h4>
                                 <div className="relative bg-black rounded-lg overflow-hidden border border-zinc-800 p-2 flex items-center justify-center h-[280px]">
                                     {result.contourPath ? <img src={getFullUrl(result.contourPath)} alt="Contour" className="max-h-full w-auto object-contain rounded isolate transition-transform duration-300 group-hover:scale-105" /> : <div className="text-zinc-600 text-xs flex flex-col items-center"><Maximize2 className="mb-2 opacity-50"/> Not Available</div>}
                                 </div>
@@ -317,10 +451,17 @@ const Results = () => {
 
                     <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
                         <p className="text-sm text-zinc-400">
-                            Model <span className="text-zinc-300 font-mono">({result.modelVersion})</span> analyzed this <span className="text-white capitalize font-semibold">{result.category}</span> image.
                             {isAnomaly
-                                ? ` Defect regions are highlighted in warmer colors (red/yellow) on the heatmap overlay. Score exceeded threshold (${result.threshold}).`
-                                : ` No significant discrepancies found. Structural integrity matches baseline standards (Score < ${result.threshold}).`}
+                                ? <>
+                                    <span className="text-red-400 font-semibold">Anomaly detected</span> in this <span className="text-white capitalize font-semibold">{result.category}</span> image.
+                                    Defect regions are highlighted in warmer colors (red/yellow) on the heatmap overlay.
+                                    Anomaly score <span className="font-mono text-white">{result.confidence}%</span> exceeded threshold <span className="font-mono text-white">{result.threshold ? (result.threshold * 100).toFixed(1) : '75.4'}%</span>.
+                                  </>
+                                : <>
+                                    <span className="text-green-400 font-semibold">No anomaly detected</span> in this <span className="text-white capitalize font-semibold">{result.category}</span> image.
+                                    Structural integrity matches baseline standards. Score <span className="font-mono text-white">{result.confidence}%</span> is below threshold <span className="font-mono text-white">{result.threshold ? (result.threshold * 100).toFixed(1) : '75.4'}%</span>.
+                                  </>
+                            }
                         </p>
                     </div>
                 </div>
@@ -356,7 +497,7 @@ const Results = () => {
 
                     {/* Gauge Chart Card */}
                     <div className="bg-zinc-900 rounded-xl shadow-sm border border-zinc-800 p-6 flex flex-col items-center">
-                        <ScoreGauge score={result.confidence} />
+                        <ScoreGauge score={result.confidence} isAnomaly={isAnomaly} />
                     </div>
 
                     {/* Action Buttons */}

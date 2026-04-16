@@ -374,6 +374,29 @@ export const adminAPI = {
         if (!response.ok) throw new Error('Failed to update settings');
         return response.json();
     },
+
+    // Get live system parameters (threshold per category, etc.)
+    getSystemParams: async () => {
+        const response = await fetch(`${API_BASE_URL}/admin/system-params`, {
+            headers: getAuthHeaders(),
+        });
+        if (!response.ok) throw new Error('Failed to fetch system params');
+        return response.json();
+    },
+
+    // Update live system parameters (threshold, notifications)
+    updateSystemParams: async (params) => {
+        const response = await fetch(`${API_BASE_URL}/admin/system-params`, {
+            method: 'PUT',
+            headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' },
+            body: JSON.stringify(params),
+        });
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || 'Failed to update system params');
+        }
+        return response.json();
+    },
 };
 
 

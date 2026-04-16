@@ -1,6 +1,6 @@
 import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from typing import List
+from typing import List, Union
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "2D Anomaly Detection API"
@@ -8,17 +8,8 @@ class Settings(BaseSettings):
     SECRET_KEY: str = "secret"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
-    # CORS
-    BACKEND_CORS_ORIGINS: List[str] = [
-        "http://localhost:5173",
-        "http://localhost:5174",
-        "http://localhost:5175",
-        "http://localhost:3000",
-        "http://127.0.0.1:5173",
-        "http://127.0.0.1:5174",
-        "http://127.0.0.1:5175",
-        "http://127.0.0.1:3000",
-    ]
+    # CORS — allow all origins so the app works on any browser/device/IP
+    BACKEND_CORS_ORIGINS: List[str] = ["*"]
 
     # Database
     POSTGRES_SERVER: str = "localhost"
@@ -41,7 +32,6 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
 
     model_config = SettingsConfigDict(
-        # Use absolute path for .env to ensure it's loaded from the Backend directory
         env_file=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), ".env"),
         extra="ignore"
     )

@@ -2,9 +2,6 @@
 import re
 import os
 from fastapi import FastAPI
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.requests import Request
-from starlette.responses import Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.api.v1.api import api_router
@@ -14,58 +11,11 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json"
 )
 
-# Matches any http/https localhost or 127.0.0.1 on any port
-_LOCALHOST_RE = re.compile(r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$")
-
-_explicit_origins = list(
-    dict.fromkeys(
-        [
-            "http://localhost:5173",
-            "http://localhost:5174",
-            "http://localhost:5175",
-            "http://localhost:3000",
-            "http://127.0.0.1:5173",
-            "http://127.0.0.1:5174",
-            "http://127.0.0.1:5175",
-            "http://127.0.0.1:3000",
-        ]
-        + [str(o) for o in settings.BACKEND_CORS_ORIGINS]
-    )
-)
-
-class DynamicCORSMiddleware(BaseHTTPMiddleware):
-    """Allow any localhost/127.0.0.1 origin on any port (dev convenience)."""
-
-    async def dispatch(self, request: Request, call_next):
-        origin = request.headers.get("origin", "")
-        allowed = origin in _explicit_origins or bool(_LOCALHOST_RE.match(origin))
-
-        # Handle preflight
-        if request.method == "OPTIONS" and allowed:
-            response = Response(status_code=204)
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Access-Control-Allow-Methods"] = "*"
-            response.headers["Access-Control-Allow-Headers"] = "*"
-            response.headers["Vary"] = "Origin"
-            return response
-
-        response = await call_next(request)
-
-        if allowed:
-            response.headers["Access-Control-Allow-Origin"] = origin
-            response.headers["Access-Control-Allow-Credentials"] = "true"
-            response.headers["Vary"] = "Origin"
-
-        return response
-
-app.add_middleware(DynamicCORSMiddleware)
-
-# Keep CORSMiddleware as fallback for the explicit list
+# Allow ALL origins — works on any browser, device, or IP without CORS errors
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=_explicit_origins,
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,   # must be False when allow_origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )

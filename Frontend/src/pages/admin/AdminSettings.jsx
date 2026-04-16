@@ -54,8 +54,12 @@ const AdminSettings = () => {
         confidence_threshold: 0.75,
         auto_delete_days: 30,
         email_notifications: true,
-        model_version: 'v2.5.0-LTS'
+        model_version: 'PatchCore-WideResNet50-v1',
+        selected_category: 'bottle',
     });
+    // Live thresholds per category from backend
+    const [categoryThresholds, setCategoryThresholds] = useState({});
+    const [thresholdSaving, setThresholdSaving] = useState(false);
 
     // Form States
     const [profileData, setProfileData] = useState({
@@ -108,11 +112,23 @@ const AdminSettings = () => {
 
     const fetchSettings = async () => {
         try {
-            const settings = await adminAPI.getSettings();
+            const [settings, sysParams] = await Promise.all([
+                adminAPI.getSettings(),
+                adminAPI.getSystemParams().catch(() => null),
+            ]);
             setSystemConfig(prev => ({
                 ...prev,
-                email_notifications: !!settings.notification_enabled
+                email_notifications: !!settings.notification_enabled,
+                model_version: sysParams?.model_version || prev.model_version,
             }));
+            if (sysParams?.categories) {
+                setCategoryThresholds(sysParams.categories);
+                // Set initial slider to bottle threshold if available
+                const bottleThresh = sysParams.categories?.bottle?.threshold;
+                if (bottleThresh) {
+                    setSystemConfig(prev => ({ ...prev, confidence_threshold: bottleThresh }));
+                }
+            }
         } catch (error) {
             console.error("Settings: Error fetching initial settings:", error);
         }
@@ -169,10 +185,20 @@ const AdminSettings = () => {
                 setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
                 setIsVerified(false);
             } else if (section === 'system settings') {
+                // Save notification setting
                 await adminAPI.updateSettings({
                     notification_enabled: systemConfig.email_notifications ? 1 : 0
                 });
-                setMessage({ type: 'success', text: 'System configuration deployed.' });
+                // Save threshold to live model
+                await adminAPI.updateSystemParams({
+                    category: systemConfig.selected_category,
+                    threshold: systemConfig.confidence_threshold,
+                    notification_enabled: systemConfig.email_notifications ? 1 : 0,
+                });
+                // Refresh thresholds display
+                const sysParams = await adminAPI.getSystemParams().catch(() => null);
+                if (sysParams?.categories) setCategoryThresholds(sysParams.categories);
+                setMessage({ type: 'success', text: `Threshold for "${systemConfig.selected_category}" updated to ${(systemConfig.confidence_threshold * 100).toFixed(1)}%. Changes are live.` });
             }
 
         } catch (err) {
@@ -251,8 +277,8 @@ const AdminSettings = () => {
             {/* Side Navigation */}
             <div className="w-full lg:w-64 space-y-2">
                 <div className="mb-6 px-4">
-                    <h1 className="text-xl font-bold text-white tracking-tight">Settings</h1>
-                    <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-1">Management Suite</p>
+                    <h1 className="text-xl font-bold text-white tracking-tight font-outfit">Settings</h1>
+                    <p className="text-[10px] text-zinc-500 uppercase font-black tracking-widest mt-1 font-sans">Management Suite</p>
                 </div>
                 {tabs.map((tab) => (
                     <button
@@ -488,71 +514,170 @@ const AdminSettings = () => {
 
                 {activeTab === 'system' && (
                     <div className="space-y-6 animate-in slide-in-from-bottom-2 duration-300">
-                        {renderHeader("System Parameters", "Adjust inference thresholds and automation policies.")}
+                        {renderHeader("System Parameters", "Live inference threshold and automation policies — changes apply immediately to all new predictions.")}
 
                         <SectionCard>
-                            <div className="space-y-10">
+                            <div className="space-y-8">
+
+                                {/* Category selector */}
+                                <div className="space-y-3">
+                                    <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-sans block">Model Category</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {Object.keys(categoryThresholds).length > 0
+                                            ? Object.keys(categoryThresholds).map(cat => (
+                                                <button
+                                                    key={cat}
+                                                    onClick={() => {
+                                                        setSystemConfig(prev => ({
+                                                            ...prev,
+                                                            selected_category: cat,
+                                                            confidence_threshold: categoryThresholds[cat]?.threshold ?? prev.confidence_threshold,
+                                                        }));
+                                                    }}
+                                                    className={clsx(
+                                                        'px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border transition-all font-sans',
+                                                        systemConfig.selected_category === cat
+                                                            ? 'bg-indigo-600 border-indigo-500 text-white'
+                                                            : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-white'
+                                                    )}
+                                                >
+                                                    {cat}
+                                                </button>
+                                            ))
+                                            : (
+                                                <button className="px-3 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider border bg-indigo-600 border-indigo-500 text-white font-sans">
+                                                    bottle
+                                                </button>
+                                            )
+                                        }
+                                    </div>
+                                </div>
+
+                                {/* Threshold slider */}
                                 <div>
                                     <div className="flex justify-between items-center mb-4">
                                         <div className="flex items-center gap-2">
-                                            <Shield size={16} className="text-blue-500" />
-                                            <span className="text-xs font-bold text-white uppercase tracking-tight">Confidence Threshold</span>
+                                            <Shield size={16} className="text-indigo-400" />
+                                            <span className="text-xs font-bold text-white uppercase tracking-tight font-sans">
+                                                Anomaly Threshold — <span className="text-indigo-400">{systemConfig.selected_category}</span>
+                                            </span>
                                         </div>
-                                        <span className="text-sm font-mono text-blue-400 font-bold bg-blue-500/10 px-2 py-0.5 rounded">{(systemConfig.confidence_threshold * 100).toFixed(0)}%</span>
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-outfit font-bold text-indigo-400 bg-indigo-500/10 px-2.5 py-0.5 rounded border border-indigo-500/20">
+                                                {(systemConfig.confidence_threshold * 100).toFixed(1)}%
+                                            </span>
+                                            {/* Direct number input */}
+                                            <input
+                                                type="number"
+                                                min="0.01" max="0.99" step="0.01"
+                                                value={systemConfig.confidence_threshold.toFixed(4)}
+                                                onChange={(e) => {
+                                                    const v = parseFloat(e.target.value);
+                                                    if (!isNaN(v) && v > 0 && v < 1) {
+                                                        setSystemConfig(prev => ({ ...prev, confidence_threshold: v }));
+                                                    }
+                                                }}
+                                                className="w-24 bg-black border border-zinc-800 rounded-lg py-1 px-2 text-xs text-white font-mono focus:border-indigo-500/50 outline-none"
+                                            />
+                                        </div>
                                     </div>
                                     <input
                                         type="range"
-                                        min="50" max="95" step="5"
-                                        value={systemConfig.confidence_threshold * 100}
-                                        onChange={(e) => setSystemConfig({ ...systemConfig, confidence_threshold: e.target.value / 100 })}
-                                        className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                        min="1" max="99" step="1"
+                                        value={Math.round(systemConfig.confidence_threshold * 100)}
+                                        onChange={(e) => setSystemConfig(prev => ({ ...prev, confidence_threshold: e.target.value / 100 }))}
+                                        className="w-full h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
                                     />
-                                    <div className="flex justify-between text-[9px] text-zinc-600 font-bold uppercase mt-3">
-                                        <span>Lenient</span>
-                                        <span>Optimized (75%)</span>
-                                        <span>Strict</span>
+                                    <div className="flex justify-between text-[9px] text-zinc-600 font-bold uppercase mt-2 font-sans">
+                                        <span>Lenient (1%)</span>
+                                        <span className="text-indigo-500">Current: {(systemConfig.confidence_threshold * 100).toFixed(1)}%</span>
+                                        <span>Strict (99%)</span>
                                     </div>
-                                    <p className="text-[10px] text-zinc-500 mt-4 leading-relaxed font-medium">Threshold determines the sensitivity of anomaly flagging. Higher values reduce false positives but may miss subtle defects.</p>
+                                    <p className="text-[10px] text-zinc-500 mt-3 leading-relaxed font-sans">
+                                        Formula: <code className="text-indigo-400 font-mono">score &gt; threshold → Anomaly</code>.
+                                        Higher threshold = fewer anomaly flags (more lenient). Lower = more sensitive.
+                                        Current model trained threshold: <span className="text-zinc-300 font-mono">
+                                            {categoryThresholds[systemConfig.selected_category]?.threshold
+                                                ? (categoryThresholds[systemConfig.selected_category].threshold * 100).toFixed(2) + '%'
+                                                : '75.44%'}
+                                        </span>
+                                    </p>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block">Log Retention Policy</label>
+                                {/* Live threshold table */}
+                                {Object.keys(categoryThresholds).length > 0 && (
+                                    <div className="bg-black/40 rounded-xl border border-zinc-800 overflow-hidden">
+                                        <div className="px-4 py-3 border-b border-zinc-800">
+                                            <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-sans">Live Thresholds per Category</p>
+                                        </div>
+                                        <div className="divide-y divide-zinc-800/50">
+                                            {Object.entries(categoryThresholds).map(([cat, info]) => (
+                                                <div key={cat} className="flex items-center justify-between px-4 py-2.5">
+                                                    <span className="text-xs font-semibold text-zinc-300 font-sans capitalize">{cat}</span>
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="w-24 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                                                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${(info.threshold * 100).toFixed(0)}%` }} />
+                                                        </div>
+                                                        <span className="text-xs font-bold text-indigo-400 font-outfit w-14 text-right">
+                                                            {(info.threshold * 100).toFixed(2)}%
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Notifications toggle */}
+                                <div className="flex items-center justify-between p-5 bg-black rounded-xl border border-white/5 shadow-inner">
+                                    <div className="flex items-center gap-4">
+                                        <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400"><Bell size={20} /></div>
+                                        <div>
+                                            <p className="text-xs font-bold text-white uppercase tracking-tight font-sans">Critical Notifications</p>
+                                            <p className="text-[10px] text-zinc-500 mt-0.5 font-sans">Automated dispatch of high-risk anomaly alerts.</p>
+                                        </div>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={systemConfig.email_notifications}
+                                            onChange={() => setSystemConfig(prev => ({ ...prev, email_notifications: !prev.email_notifications }))}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-500 after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 peer-checked:after:bg-white"></div>
+                                    </label>
+                                </div>
+
+                                {/* Model info */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-sans block">Model Version</label>
+                                        <div className="flex items-center gap-2">
+                                            <span className="px-3 py-1.5 bg-zinc-800 text-zinc-200 text-[10px] font-mono rounded-lg border border-white/5">{systemConfig.model_version}</span>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest font-sans block">Log Retention</label>
                                         <div className="flex items-center gap-3">
                                             <input
                                                 type="number"
                                                 value={systemConfig.auto_delete_days}
-                                                onChange={(e) => setSystemConfig({ ...systemConfig, auto_delete_days: e.target.value })}
-                                                className="w-24 bg-black border border-zinc-800 rounded-lg py-2 px-3 text-sm text-white focus:border-white/20 outline-none shadow-inner"
+                                                onChange={(e) => setSystemConfig(prev => ({ ...prev, auto_delete_days: e.target.value }))}
+                                                className="w-20 bg-black border border-zinc-800 rounded-lg py-1.5 px-3 text-sm text-white font-sans focus:border-indigo-500/50 outline-none"
                                             />
-                                            <span className="text-xs text-zinc-400 font-medium">Days before auto-purge</span>
+                                            <span className="text-xs text-zinc-500 font-sans">days</span>
                                         </div>
                                     </div>
-                                    <div className="space-y-3">
-                                        <label className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest block">Compute Environment</label>
-                                        <div className="flex items-center gap-2">
-                                            <span className="px-3 py-1.5 bg-zinc-800 text-zinc-200 text-[10px] font-mono rounded-lg border border-white/5 shadow-sm">{systemConfig.model_version}</span>
-                                            <button className="p-2 rounded-lg hover:bg-zinc-800 text-blue-500 transition-all active:rotate-180" title="Check for updates"><RefreshCw size={14} /></button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="flex items-center justify-between p-5 bg-black rounded-xl border border-white/5 shadow-inner">
-                                    <div className="flex items-center gap-4">
-                                        <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 group-hover:scale-110 transition-transform"><Bell size={20} /></div>
-                                        <div>
-                                            <p className="text-xs font-bold text-white uppercase tracking-tight">Critical Notifications</p>
-                                            <p className="text-[10px] text-zinc-500 mt-0.5">Automated dispatch of high-risk anomaly alerts.</p>
-                                        </div>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input type="checkbox" checked={systemConfig.email_notifications} onChange={() => setSystemConfig({ ...systemConfig, email_notifications: !systemConfig.email_notifications })} className="sr-only peer" />
-                                        <div className="w-11 h-6 bg-zinc-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-zinc-500 after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600 peer-checked:after:bg-white"></div>
-                                    </label>
                                 </div>
                             </div>
-                            <div className="mt-10 pt-6 border-t border-white/5 flex justify-end">
-                                <button onClick={() => handleSave('system settings')} disabled={loading} className="bg-white text-black px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-tight flex items-center gap-2 hover:bg-zinc-200 transition-all shadow-xl active:scale-95 disabled:opacity-50">
+
+                            <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
+                                <p className="text-[10px] text-zinc-500 font-sans">Changes to threshold apply immediately to all new predictions.</p>
+                                <button
+                                    onClick={() => handleSave('system settings')}
+                                    disabled={loading}
+                                    className="bg-indigo-600 text-white px-6 py-2.5 rounded-lg text-xs font-bold uppercase tracking-tight flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-xl active:scale-95 disabled:opacity-50 font-sans"
+                                >
                                     <Save size={14} /> {loading ? 'Deploying...' : 'Deploy Configuration'}
                                 </button>
                             </div>
@@ -655,27 +780,31 @@ const AdminSettings = () => {
             {/* Restricted Zone Warning & Buttons */}
             <div className="w-full lg:w-64 space-y-4">
                 <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-6">
-                    <div className="flex items-center gap-3 mb-6">
+                    <div className="flex items-center gap-3 mb-4">
                         <AlertTriangle size={16} className="text-red-500" />
-                        <h3 className="text-xs font-bold text-red-500 uppercase tracking-widest">Restricted zone</h3>
+                        <h3 className="text-xs font-bold text-red-500 uppercase tracking-widest font-sans">Restricted Zone</h3>
                     </div>
-                    <p className="text-[10px] text-zinc-500 font-medium uppercase leading-relaxed mb-6">
-                        Destructive actions. proceed with extreme caution.
+                    <p className="text-[10px] text-zinc-500 font-medium leading-relaxed mb-6 font-sans">
+                        Destructive actions. Database records are preserved (soft operations).
                     </p>
                     <div className="space-y-2">
                         <button
                             onClick={() => setRestrictedModal({ isOpen: true, type: 'wipe', password: '' })}
-                            className="w-full flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 hover:bg-red-500 hover:text-white transition-all text-[10px] font-bold uppercase tracking-wider"
+                            className="w-full flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 hover:bg-red-500 hover:text-white transition-all text-[10px] font-bold uppercase tracking-wider font-sans"
                         >
-                            <Trash2 size={14} /> Wipe All Users
+                            <Trash2 size={14} /> Deactivate All Users
                         </button>
                         <button
                             onClick={() => setRestrictedModal({ isOpen: true, type: 'reset', password: '' })}
-                            className="w-full flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 hover:bg-red-500 hover:text-white transition-all text-[10px] font-bold uppercase tracking-wider"
+                            className="w-full flex items-center gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 hover:bg-red-500 hover:text-white transition-all text-[10px] font-bold uppercase tracking-wider font-sans"
                         >
-                            <RefreshCw size={14} /> System Reset
+                            <RefreshCw size={14} /> Clear Upload Files
                         </button>
                     </div>
+                    <p className="text-[9px] text-zinc-600 mt-4 leading-relaxed font-sans">
+                        "Clear Upload Files" removes physical files from disk only — DB records stay intact.<br />
+                        "Deactivate All Users" sets is_active=false for non-admin users — accounts preserved in DB.
+                    </p>
                 </div>
             </div>
         </div>
@@ -698,8 +827,12 @@ const AdminSettings = () => {
 
                         <p className="text-sm text-zinc-400 leading-relaxed mb-8">
                             You are about to perform a <span className="text-red-500 font-bold uppercase tracking-tighter">
-                                {restrictedModal.type === 'reset' ? 'Full System Reset' : 'Global User Purge'}
-                            </span>. This action is irreversible and will permanently delete data from the infrastructure.
+                                {restrictedModal.type === 'reset' ? 'System File Reset' : 'User Deactivation'}
+                            </span>.{' '}
+                            {restrictedModal.type === 'reset'
+                                ? 'All uploaded files will be removed from disk. Database records are preserved.'
+                                : 'All non-admin users will be deactivated (soft delete). Database records are preserved.'
+                            }
                         </p>
 
                         <div className="space-y-4">

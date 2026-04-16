@@ -1,106 +1,168 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { Mail, ArrowRight, CheckCircle } from 'lucide-react';
-
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Lock, ArrowRight, CheckCircle, Eye, EyeOff, Scan, AlertCircle } from 'lucide-react';
+import { authAPI } from '../../services/api';
 
 const ResetPassword = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const token = location.state?.token || '';
+    const email = location.state?.email || '';
+
     const [loading, setLoading] = useState(false);
     const [submitted, setSubmitted] = useState(false);
+    const [error, setError] = useState('');
+    const [showNew, setShowNew] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
+    const [passwords, setPasswords] = useState({ new_password: '', confirm_password: '' });
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        setLoading(true);
+        setError('');
 
-        // Mock API call
-        setTimeout(() => {
-            setLoading(false);
+        if (passwords.new_password !== passwords.confirm_password) {
+            setError('Passwords do not match.');
+            return;
+        }
+        if (passwords.new_password.length < 8) {
+            setError('Password must be at least 8 characters.');
+            return;
+        }
+        if (!token) {
+            setError('Invalid session. Please restart the password reset flow.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await authAPI.resetPassword(token, passwords.new_password);
             setSubmitted(true);
-        }, 1500);
+        } catch (err) {
+            setError(err.message || 'Password reset failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <div className="min-h-screen bg-black flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <div className="min-h-screen bg-black flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03]">
+                <Scan size={800} className="text-white" />
+            </div>
+
+            <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
                 <div className="flex justify-center">
                     <div className="h-12 w-12 bg-white rounded-lg flex items-center justify-center">
-                        <span className="text-black font-bold text-xl">AI</span>
+                        <Lock className="text-black" size={24} />
                     </div>
                 </div>
                 <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
-                    Reset your password
+                    Set New Password
                 </h2>
                 <p className="mt-2 text-center text-sm text-zinc-400">
-                    Remember your password?{' '}
-                    <Link to="/login" className="font-medium text-white hover:text-zinc-300 underline underline-offset-4">
-                        Sign in
-                    </Link>
+                    {email ? `Resetting password for ${email}` : 'Create a strong new password'}
                 </p>
             </div>
 
-            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div
-                    className="bg-zinc-900 py-8 px-4 shadow sm:rounded-lg sm:px-10 border border-zinc-800 animate-in fade-in slide-in-from-bottom-4 duration-500"
-                >
-
+            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md relative z-10">
+                <div className="bg-zinc-900 py-8 px-4 shadow sm:rounded-xl sm:px-10 border border-zinc-800 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {submitted ? (
-                        <div className="text-center">
-                            <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-green-100 mb-4">
-                                <CheckCircle className="h-6 w-6 text-green-600" />
+                        <div className="text-center space-y-6">
+                            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-500/10 border border-green-500/20">
+                                <CheckCircle className="h-8 w-8 text-green-500" />
                             </div>
-                            <h3 className="text-lg font-medium text-white">Check your email</h3>
-                            <p className="mt-2 text-sm text-zinc-400">
-                                We've sent a password reset link to your email address.
-                            </p>
-                            <div className="mt-6">
-                                <Link
-                                    to="/login"
-                                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-white hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white transition-all"
-                                >
-                                    Back to Sign in
-                                </Link>
+                            <div>
+                                <h3 className="text-lg font-bold text-white">Password Updated!</h3>
+                                <p className="mt-2 text-sm text-zinc-400">
+                                    Your password has been reset successfully. You can now sign in with your new password.
+                                </p>
                             </div>
+                            <Link
+                                to="/login"
+                                className="w-full flex justify-center py-3 px-4 rounded-lg text-xs font-bold uppercase tracking-widest text-black bg-white hover:bg-zinc-200 transition-all"
+                            >
+                                Back to Sign In
+                            </Link>
                         </div>
                     ) : (
                         <form className="space-y-6" onSubmit={handleSubmit}>
+                            {error && (
+                                <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3 flex items-center gap-3 text-red-400 text-xs">
+                                    <AlertCircle size={14} />
+                                    {error}
+                                </div>
+                            )}
+
+                            {/* New Password */}
                             <div>
-                                <label htmlFor="email" className="block text-sm font-medium text-zinc-300">
-                                    Email address
+                                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
+                                    New Password
                                 </label>
-                                <div className="mt-1 relative rounded-md shadow-sm">
+                                <div className="relative">
                                     <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Mail className="h-5 w-5 text-zinc-500" />
+                                        <Lock className="h-4 w-4 text-zinc-600" />
                                     </div>
                                     <input
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        autoComplete="email"
+                                        type={showNew ? 'text' : 'password'}
                                         required
-                                        className="focus:ring-white focus:border-white block w-full pl-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
-                                        placeholder="you@example.com"
+                                        value={passwords.new_password}
+                                        onChange={(e) => setPasswords({ ...passwords, new_password: e.target.value })}
+                                        className="block w-full pl-10 pr-10 py-3 bg-black border border-zinc-800 rounded-lg text-white text-sm placeholder-zinc-700 focus:outline-none focus:border-white/20 transition-all"
+                                        placeholder="••••••••"
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowNew(!showNew)}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-500 hover:text-white"
+                                    >
+                                        {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
                                 </div>
                             </div>
 
+                            {/* Confirm Password */}
                             <div>
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-black bg-white hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                                >
-                                    {loading ? (
-                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
-                                    ) : (
-                                        <>
-                                            Send Reset Link
-                                            <ArrowRight className="ml-2 -mr-1 h-5 w-5" />
-                                        </>
-                                    )}
-                                </button>
+                                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">
+                                    Confirm Password
+                                </label>
+                                <div className="relative">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Lock className="h-4 w-4 text-zinc-600" />
+                                    </div>
+                                    <input
+                                        type={showConfirm ? 'text' : 'password'}
+                                        required
+                                        value={passwords.confirm_password}
+                                        onChange={(e) => setPasswords({ ...passwords, confirm_password: e.target.value })}
+                                        className="block w-full pl-10 pr-10 py-3 bg-black border border-zinc-800 rounded-lg text-white text-sm placeholder-zinc-700 focus:outline-none focus:border-white/20 transition-all"
+                                        placeholder="••••••••"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirm(!showConfirm)}
+                                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-zinc-500 hover:text-white"
+                                    >
+                                        {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full flex justify-center py-3 px-4 rounded-lg text-xs font-bold uppercase tracking-widest text-black bg-white hover:bg-zinc-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                                {loading ? (
+                                    <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                                ) : (
+                                    <>Reset Password <ArrowRight className="ml-2 h-4 w-4" /></>
+                                )}
+                            </button>
+
+                            <div className="text-center">
+                                <Link to="/login" className="text-[10px] font-bold text-zinc-500 hover:text-white uppercase tracking-widest transition-all">
+                                    Back to Sign In
+                                </Link>
                             </div>
                         </form>
                     )}

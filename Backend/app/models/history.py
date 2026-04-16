@@ -14,6 +14,9 @@ class History(Base):
     status = Column(String)               # 'Normal' or 'Anomaly'
     score = Column(Float)
     heatmap_path = Column(String, nullable=True)
+    hot_map_path = Column(String, nullable=True)
+    contour_path = Column(String, nullable=True)
+    comparison_path = Column(String, nullable=True)
     threshold = Column(Float, nullable=True)
     model_version = Column(String, nullable=True)
     category = Column(String(50), nullable=True, default="unknown")

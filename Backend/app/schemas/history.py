@@ -11,6 +11,9 @@ class HistoryBase(BaseModel):
     status: Optional[str] = None
     score: Optional[float] = None
     heatmap_path: Optional[str] = None
+    hot_map_path: Optional[str] = None
+    contour_path: Optional[str] = None
+    comparison_path: Optional[str] = None
     threshold: Optional[float] = None
     model_version: Optional[str] = None
     category: Optional[str] = None

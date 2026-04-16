@@ -145,11 +145,11 @@ const ForgotPassword = () => {
                     </div>
                 </div>
 
-                {/* Visual Accent */}
+                {/* Back to login */}
                 <div className="mt-8 text-center">
-                    <p className="text-[10px] text-zinc-600 font-bold uppercase tracking-[0.2em] animate-pulse">
-                        Secured by Intelligence Node
-                    </p>
+                    <Link to="/login" className="text-[10px] font-bold text-zinc-600 hover:text-white uppercase tracking-[0.2em] transition-all">
+                        ← Back to Sign In
+                    </Link>
                 </div>
             </div>
         </div>

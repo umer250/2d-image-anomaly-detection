@@ -77,7 +77,9 @@ const Dashboard = () => {
             color: 'text-blue-400',
             bg: 'bg-blue-500/10',
             border: 'border-blue-500/20',
-            accent: '#3b82f6'
+            accent: '#3b82f6',
+            hoverBorder: 'hover:border-blue-500/50',
+            desc: 'Images processed'
         },
         {
             name: 'Anomalies Found',
@@ -86,7 +88,9 @@ const Dashboard = () => {
             color: 'text-red-400',
             bg: 'bg-red-500/10',
             border: 'border-red-500/20',
-            accent: '#ef4444'
+            accent: '#ef4444',
+            hoverBorder: 'hover:border-red-500/50',
+            desc: 'Defects detected'
         },
         {
             name: 'Normal Images',
@@ -95,16 +99,20 @@ const Dashboard = () => {
             color: 'text-emerald-400',
             bg: 'bg-emerald-500/10',
             border: 'border-emerald-500/20',
-            accent: '#10b981'
+            accent: '#10b981',
+            hoverBorder: 'hover:border-emerald-500/50',
+            desc: 'Passed inspection'
         },
         {
             name: 'Model Accuracy',
-            value: `${statsData.accuracy || 98.5}%`,
+            value: '99.84%',
             icon: Activity,
             color: 'text-purple-400',
             bg: 'bg-purple-500/10',
             border: 'border-purple-500/20',
-            accent: '#a855f7'
+            accent: '#a855f7',
+            hoverBorder: 'hover:border-purple-500/50',
+            desc: 'Image AUROC · Pixel AUROC 98.17%'
         },
     ];
 
@@ -139,23 +147,21 @@ const Dashboard = () => {
                     : stats.map((item, idx) => (
                         <div
                             key={item.name}
-                            className={`relative bg-zinc-900/50 border rounded-2xl p-5 overflow-hidden transition-all duration-300 shadow-lg hover:shadow-xl ${item.border} animate-in fade-in slide-in-from-bottom-2 duration-500`}
+                            className={`relative bg-zinc-900/50 border rounded-2xl p-5 overflow-hidden transition-all duration-300 shadow-lg hover:shadow-xl cursor-default group ${item.border} ${item.hoverBorder} animate-in fade-in slide-in-from-bottom-2 duration-500`}
                             style={{ animationDelay: `${idx * 80}ms`, animationFillMode: 'both' }}
                         >
-
-                            {/* Subtle accent glow */}
+                            {/* Subtle accent glow — brightens on hover */}
                             <div
-                                className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10 blur-2xl pointer-events-none"
+                                className="absolute top-0 right-0 w-24 h-24 rounded-full opacity-10 group-hover:opacity-25 blur-2xl pointer-events-none transition-opacity duration-300"
                                 style={{ backgroundColor: item.accent }}
                             />
 
                             <div className="flex items-start justify-between mb-4">
-                                <div className={`p-2.5 rounded-xl ${item.bg}`}>
+                                <div className={`p-2.5 rounded-xl ${item.bg} group-hover:scale-110 transition-transform duration-300`}>
                                     <item.icon size={20} className={item.color} />
                                 </div>
                             </div>
 
-                            {/* Label — Outfit font */}
                             <p
                                 className="text-xs font-bold text-zinc-500 uppercase tracking-widest mb-1"
                                 style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}
@@ -163,13 +169,16 @@ const Dashboard = () => {
                                 {item.name}
                             </p>
 
-                            {/* Value — large Outfit number */}
                             <p
-                                className="text-3xl font-black text-white leading-none"
+                                className="text-3xl font-black text-white leading-none group-hover:scale-105 transition-transform duration-300 origin-left"
                                 style={{ fontFamily: "'Outfit', system-ui, sans-serif" }}
                             >
                                 {item.value}
                             </p>
+
+                            {item.desc && (
+                                <p className="text-[10px] text-zinc-600 mt-1.5 font-medium">{item.desc}</p>
+                            )}
                         </div>
                     ))}
             </div>
@@ -234,7 +243,10 @@ const Dashboard = () => {
                             Defect Severity Breakdown
                         </h3>
                         <p className="text-zinc-500 text-xs mb-6">
-                            Distribution of anomaly scores across severity levels
+                            Distribution of anomaly scores across severity levels —
+                            <span className="text-red-400 font-semibold"> Critical</span> (&gt;85%) — severe structural damage requiring immediate action,
+                            <span className="text-yellow-400 font-semibold"> Major</span> (60–85%) — significant defect affecting product quality,
+                            <span className="text-emerald-400 font-semibold"> Minor</span> (&lt;60%) — slight anomaly, monitor closely
                         </p>
 
                         {!hasDefectData ? (

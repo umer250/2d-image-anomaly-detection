@@ -227,6 +227,15 @@ def get_all_images(
             up_date = img.upload_date
             if up_date and not isinstance(up_date, str):
                 up_date = up_date.isoformat()
+
+            # Try to get richer data from History for this image (by filename + user)
+            history_record = (
+                db.query(History)
+                .filter(History.filename == img.filename, History.user_id == img.user_id)
+                .order_by(History.created_at.desc())
+                .first()
+            )
+
             serialized.append(
                 {
                     "id": img.id,
@@ -234,12 +243,18 @@ def get_all_images(
                     "file_path": img.file_path,
                     "upload_date": up_date,
                     "user_id": img.user_id,
+                    "category": getattr(history_record, 'category', None) or 'bottle',
                     "results": [
                         {
                             "id": r.id,
                             "anomaly_score": r.anomaly_score,
                             "is_anomaly": r.is_anomaly,
                             "heatmap_path": r.heatmap_path,
+                            "threshold": getattr(history_record, 'threshold', None),
+                            "model_version": getattr(history_record, 'model_version', None),
+                            "hot_map_path": getattr(history_record, 'hot_map_path', None),
+                            "contour_path": getattr(history_record, 'contour_path', None),
+                            "comparison_path": getattr(history_record, 'comparison_path', None),
                         }
                         for r in img.results
                     ],
@@ -394,15 +409,15 @@ def reset_system(
     password: str,
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """Delete all history/images/results and physical uploads. Password: 12345."""
+    """
+    Soft-reset: clears physical upload/heatmap files from disk but keeps all
+    database records intact (History, Image, Result rows are preserved).
+    Password: 12345.
+    """
     if password != "12345":
         raise HTTPException(status_code=400, detail="Invalid system password.")
     try:
-        db.query(Result).delete()
-        db.query(Image).delete()
-        db.query(History).delete()
-        db.commit()
-
+        deleted_files = 0
         for d in ["uploads", "heatmaps", "static/uploads", "static/heatmaps"]:
             if os.path.exists(d):
                 for f in os.listdir(d):
@@ -410,12 +425,14 @@ def reset_system(
                     try:
                         if os.path.isfile(fp) or os.path.islink(fp):
                             os.unlink(fp)
+                            deleted_files += 1
                     except Exception as err:
                         logging.error(f"Failed to delete {fp}: {err}")
 
-        return {"message": "System reset successful. All data and uploads cleared."}
+        return {
+            "message": f"System reset successful. {deleted_files} physical files removed. Database records preserved."
+        }
     except Exception as e:
-        db.rollback()
         raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
 
 
@@ -426,13 +443,23 @@ def wipe_all_users(
     password: str,
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """Delete all non-admin users. Password: 12345."""
+    """
+    Soft-wipe: sets is_active=False for all non-admin users.
+    Database records are preserved. Password: 12345.
+    """
     if password != "12345":
         raise HTTPException(status_code=400, detail="Invalid system password.")
     try:
-        deleted_count = db.query(User).filter(User.role != "admin").delete()
+        deactivated = (
+            db.query(User)
+            .filter(User.role != "admin", User.is_active == True)
+            .all()
+        )
+        count = len(deactivated)
+        for u in deactivated:
+            u.is_active = False
         db.commit()
-        return {"message": f"Successfully wiped {deleted_count} users."}
+        return {"message": f"Successfully deactivated {count} non-admin users. Records preserved in database."}
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=500, detail=f"Wipe failed: {str(e)}")
@@ -441,6 +468,75 @@ def wipe_all_users(
 # ═══════════════════════════════════════════════════════════════════════════════
 # SETTINGS
 # ═══════════════════════════════════════════════════════════════════════════════
+
+@router.get("/system-params")
+def get_system_params(
+    *,
+    db: Session = Depends(deps.get_db),
+    current_user: User = Depends(deps.require_admin),
+) -> Any:
+    """Get live system parameters including current model threshold."""
+    from app.ml.model_loader import model_loader
+    from app.ml.preprocess import VALID_CATEGORIES
+
+    params = {}
+    for cat in VALID_CATEGORIES:
+        if model_loader.is_model_available(cat):
+            params[cat] = {
+                "threshold": model_loader.get_threshold(cat),
+                "is_trained": True,
+            }
+
+    settings = (
+        db.query(__import__('app.models.settings', fromlist=['UserSettings']).UserSettings)
+        .filter(__import__('app.models.settings', fromlist=['UserSettings']).UserSettings.user_id == current_user.id)
+        .first()
+    )
+
+    return {
+        "categories": params,
+        "notification_enabled": settings.notification_enabled if settings else 1,
+        "model_version": "PatchCore-WideResNet50-v1",
+    }
+
+
+@router.put("/system-params")
+def update_system_params(
+    *,
+    db: Session = Depends(deps.get_db),
+    params_in: dict,
+    current_user: User = Depends(deps.require_admin),
+) -> Any:
+    """
+    Update live system parameters.
+    Accepts: { category: str, threshold: float, notification_enabled: int }
+    Threshold change takes effect immediately for all new predictions.
+    """
+    from app.ml.model_loader import model_loader
+
+    updated = {}
+
+    if "threshold" in params_in and "category" in params_in:
+        cat = params_in["category"]
+        new_thresh = float(params_in["threshold"])
+        if not (0.0 < new_thresh < 1.0):
+            raise HTTPException(status_code=400, detail="Threshold must be between 0 and 1")
+        model_loader.update_threshold(cat, new_thresh)
+        updated["threshold"] = new_thresh
+        updated["category"] = cat
+
+    if "notification_enabled" in params_in:
+        from app.models.settings import UserSettings
+        settings = db.query(UserSettings).filter(UserSettings.user_id == current_user.id).first()
+        if not settings:
+            settings = UserSettings(user_id=current_user.id)
+            db.add(settings)
+        settings.notification_enabled = 1 if params_in["notification_enabled"] else 0
+        db.commit()
+        updated["notification_enabled"] = settings.notification_enabled
+
+    return {"message": "System parameters updated", "updated": updated}
+
 
 @router.get("/settings")
 def get_admin_settings(

@@ -10,12 +10,11 @@ import {
     Menu,
     X,
     Shield,
-    Scan
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import clsx from 'clsx';
-
 import Footer from '../Footer';
+import AppLogo from '../icons/AppLogo';
 
 const AdminLayout = () => {
     const { user, logout } = useAuth();
@@ -40,10 +39,9 @@ const AdminLayout = () => {
         <div className="min-h-screen bg-black text-white flex">
             {/* Sidebar for Desktop */}
             <aside className="hidden md:flex flex-col w-64 border-r border-red-900/20 bg-black/50 backdrop-blur-xl fixed h-full z-20">
-                <div className="p-6 flex items-center border-b border-zinc-800 h-16">
-                    <Shield className="text-red-500 mr-3" size={24} />
-                    <span className="text-lg font-bold tracking-tight">AdminPanel</span>
-                    <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-red-500/10 text-red-500 border border-red-500/20 uppercase font-bold tracking-wider">Admin</span>
+                <div className="p-5 flex items-center border-b border-zinc-800 h-16 gap-3">
+                    <AppLogo size={32} color="#6366f1" showText={true} />
+                    <span className="ml-auto px-1.5 py-0.5 rounded text-[9px] bg-red-500/10 text-red-400 border border-red-500/20 uppercase font-bold tracking-wider font-sans shrink-0">Admin</span>
                 </div>
 
                 <nav className="flex-1 overflow-y-auto py-6 px-3 space-y-1">
@@ -54,9 +52,9 @@ const AdminLayout = () => {
                                 key={item.name}
                                 to={item.href}
                                 className={clsx(
-                                    "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors group",
+                                    "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors group font-sans",
                                     isActive
-                                        ? "bg-red-500 text-white"
+                                        ? "bg-indigo-600 text-white"
                                         : "text-zinc-400 hover:text-white hover:bg-zinc-900"
                                 )}
                             >
@@ -100,10 +98,9 @@ const AdminLayout = () => {
 
             {/* Mobile Header */}
             <div className="md:hidden fixed top-0 w-full bg-black border-b border-zinc-800 z-30 px-4 h-16 flex items-center justify-between">
-                <div className="flex items-center">
-                    <Shield className="text-red-500 mr-3" size={24} />
-                    <span className="text-lg font-bold">AdminPanel</span>
-                    <span className="ml-2 px-1.5 py-0.5 rounded text-[10px] bg-red-500/10 text-red-500 border border-red-500/20 uppercase font-bold tracking-wider">Admin</span>
+                <div className="flex items-center gap-2">
+                    <AppLogo size={28} color="#6366f1" showText={true} textSize={14} />
+                    <span className="px-1.5 py-0.5 rounded text-[9px] bg-red-500/10 text-red-400 border border-red-500/20 uppercase font-bold tracking-wider font-sans">Admin</span>
                 </div>
                 <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-zinc-400 hover:text-white">
                     {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -124,9 +121,9 @@ const AdminLayout = () => {
                             to={item.href}
                             onClick={() => setIsMobileMenuOpen(false)}
                             className={clsx(
-                                "flex items-center px-4 py-3 text-base font-medium rounded-lg",
+                                "flex items-center px-4 py-3 text-base font-medium rounded-lg font-sans",
                                 location.pathname === item.href
-                                    ? "bg-red-500 text-white"
+                                    ? "bg-indigo-600 text-white"
                                     : "text-zinc-400 hover:text-white hover:bg-zinc-900"
                             )}
                         >
