@@ -73,4 +73,19 @@ export const mlAPI = {
         if (!response.ok) throw new Error('Failed to fetch model info');
         return response.json();
     },
+    // Model status (available categories)
+    getModelStatus: async () => {
+        const response = await fetch(`${API_URL}/ml/model-status`);
+        if (!response.ok) throw new Error('Failed to fetch model status');
+        return response.json();
+    },
+
+    // Per-category threshold from the trained model
+    getModelThreshold: async (category = 'bottle') => {
+        const token = localStorage.getItem('access_token');
+        const headers = token ? { Authorization: `Bearer ${token}` } : {};
+        const response = await fetch(`${API_URL}/ml/model-threshold?category=${encodeURIComponent(category)}`, { headers });
+        if (!response.ok) throw new Error('Failed to fetch threshold');
+        return response.json(); // { category, threshold }
+    },
 };

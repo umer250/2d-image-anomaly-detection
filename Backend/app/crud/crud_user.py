@@ -14,8 +14,15 @@ def get_user_by_email(db: Session, email: str) -> Optional[User]:
     return db.query(User).filter(User.email.ilike(email)).first()
 
 def get_all_users(db: Session, skip: int = 0, limit: int = 100) -> List[User]:
-    """Get all users with pagination (admin only), ordered by ID."""
-    return db.query(User).order_by(User.id).offset(skip).limit(limit).all()
+    """Get all active (non-deleted) users with pagination (admin only), ordered by ID."""
+    return (
+        db.query(User)
+        .filter(User.deleted_at.is_(None))
+        .order_by(User.id)
+        .offset(skip)
+        .limit(limit)
+        .all()
+    )
 
 
 def create_user(db: Session, user: UserCreate) -> User:
@@ -54,12 +61,14 @@ def update_user(db: Session, user_id: int, user_update: UserUpdate) -> Optional[
     return db_user
 
 def delete_user(db: Session, user_id: int) -> bool:
-    """Hard delete user from the database."""
+    """Soft-delete user: sets deleted_at timestamp and deactivates account."""
+    from datetime import datetime, timezone
     db_user = get_user(db, user_id)
     if not db_user:
         return False
-    
-    db.delete(db_user)
+
+    db_user.is_active = False
+    db_user.deleted_at = datetime.now(timezone.utc)
     db.commit()
     return True
 

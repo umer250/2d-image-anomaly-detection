@@ -136,8 +136,12 @@ const Dashboard = () => {
         );
     }
 
-    const anomalyRate = parseFloat(stats?.anomaly_rate ?? stats?.anomaly_rate_percent ?? 0);
-    const normalRate = (100 - anomalyRate).toFixed(1);
+    const anomalyRate = stats.total_predictions > 0 
+        ? ((stats.anomaly_count / stats.total_predictions) * 100).toFixed(1) 
+        : '0.0';
+    const normalRate = stats.total_predictions > 0 
+        ? (100 - parseFloat(anomalyRate)).toFixed(1) 
+        : '100.0';
 
     // Activity chart data — enrich with formatted label
     const lineData = (stats?.activity_last_7_days || []).map(item => ({
@@ -313,7 +317,7 @@ const Dashboard = () => {
                 <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-5 flex items-center gap-4">
                     <TrendingUp className="text-indigo-400 shrink-0" size={20} />
                     <div>
-                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold font-sans">Anomaly Formula</p>
+                        <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold font-sans">Anomaly Rate</p>
                         <p className="text-xs text-zinc-300 mt-1 font-sans">
                             Rate = (Anomalies / Total) × 100
                         </p>
@@ -339,7 +343,7 @@ const Dashboard = () => {
                     <div>
                         <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold font-sans">Total Inspections</p>
                         <p className="text-2xl font-bold text-white font-outfit mt-1">{stats.total_predictions}</p>
-                        <p className="text-[10px] text-zinc-500 font-sans">across {stats.total_users} users</p>
+
                     </div>
                 </div>
             </div>

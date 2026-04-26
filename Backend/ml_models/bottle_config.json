@@ -1,20 +1,21 @@
 {
     "category": "bottle",
-    "model_file": "bottle_patchcore update thereshould.pkl",
+    "model_file": "bottle_patchcore train-19.pkl",
     "backbone": "wide_resnet50_2",
     "layers": ["layer2", "layer3"],
     "embedding_dims": 1536,
     "patch_hw": [28, 28],
     "input_size": [224, 224],
     "coreset_ratio": 0.1,
-    "num_neighbors": 9,
-    "threshold": 0.7544,
-    "scoring": "9-NN average distance per patch, image score = max patch score, normalized via x/(x+1)",
+    "num_neighbors": 1,
+    "threshold": 1.0,
+    "p99_normal": 2.8629,
+    "scoring": "score = raw_max / p99_normal, threshold = 1.0 — normal < 1.0, anomaly > 1.0",
     "preprocessing": "resize(224,224) + ImageNet normalize ONLY — no CLAHE, no background removal (matches Kaggle training exactly)",
     "metrics": {
         "image_auroc": 0.9984,
         "pixel_auroc": 0.9817
     },
     "dataset": "MVTec2D - bottle category",
-    "notes": "bottle_latest_patchcore.pkl is the real trained model. remove_bg only activates when user presses Isolate Object toggle."
+    "notes": "Updated to use bottle_patchcore train-19.pkl model. remove_bg only activates when user presses Isolate Object toggle."
 }

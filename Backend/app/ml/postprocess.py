@@ -11,10 +11,13 @@ Header bar: green = NORMAL, red = ANOMALY DETECTED
 """
 
 import os
+import logging
 import cv2
 import numpy as np
 from scipy.ndimage import gaussian_filter
 from typing import Dict
+
+logger = logging.getLogger("app.ml.postprocess")
 
 
 def generate_heatmap(
@@ -85,7 +88,7 @@ def generate_heatmap(
         }
 
     except Exception as e:
-        print(f"[postprocess] Heatmap generation error: {e}")
+        logger.error(f"[postprocess] Heatmap generation error: {e}", exc_info=True)
         try:
             import shutil
             os.makedirs(
@@ -93,8 +96,8 @@ def generate_heatmap(
                 exist_ok=True,
             )
             shutil.copy2(original_image_path, output_path)
-        except Exception:
-            pass
+        except Exception as copy_err:
+            logger.error(f"[postprocess] Fallback copy also failed: {copy_err}")
         return {"overlay": output_path, "hot": output_path, "contour": output_path, "comparison": output_path}
 
 
@@ -213,5 +216,5 @@ def _save_kaggle_style_comparison(
         return comp_path
 
     except Exception as exc:
-        print(f"[postprocess] Comparison image skipped: {exc}")
+        logger.warning(f"[postprocess] Comparison image skipped: {exc}")
         return output_path

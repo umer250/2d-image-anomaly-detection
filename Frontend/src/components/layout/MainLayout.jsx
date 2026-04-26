@@ -46,7 +46,7 @@ const MainLayout = () => {
             {/* Sidebar for Desktop */}
             <aside className="hidden md:flex flex-col w-64 border-r border-zinc-800 bg-black/50 backdrop-blur-xl fixed h-full z-20">
                 <div className="p-6 flex items-center border-b border-zinc-800 h-16">
-                    <Scan className="text-white mr-3" size={24} />
+                    <img src="/logo.png" alt="Logo" className="w-7 h-7 object-contain mr-3" />
                     <span className="text-lg font-bold tracking-tight">AnomalyDetect</span>
                 </div>
 
@@ -101,7 +101,7 @@ const MainLayout = () => {
             {/* Mobile Header */}
             <div className="md:hidden fixed top-0 w-full bg-black border-b border-zinc-800 z-30 px-4 h-16 flex items-center justify-between">
                 <div className="flex items-center">
-                    <Scan className="text-white mr-3" size={24} />
+                    <img src="/logo.png" alt="Logo" className="w-7 h-7 object-contain mr-3" />
                     <span className="text-lg font-bold">AnomalyDetect</span>
                 </div>
                 <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="text-zinc-400 hover:text-white">

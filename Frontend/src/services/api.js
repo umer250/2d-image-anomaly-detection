@@ -42,7 +42,6 @@ export const authAPI = {
 
     // Login user
     login: async (email, password) => {
-        console.log("api: login request starting for", email);
         const formData = new URLSearchParams();
         formData.append('username', email);  // OAuth2 uses 'username' field
         formData.append('password', password);
@@ -53,7 +52,6 @@ export const authAPI = {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: formData,
             });
-            console.log("api: login response received with status:", response.status);
 
             if (!response.ok) {
                 let detail = 'Login failed';
@@ -61,23 +59,18 @@ export const authAPI = {
                     const error = await response.json();
                     detail = error.detail || detail;
                 } catch (_) {
-                    // Response wasn't JSON (e.g. CORS-blocked response)
                     detail = response.status === 0
                         ? 'Cannot connect to server. Check that the backend is running.'
                         : `Server error (${response.status})`;
                 }
-                console.error("api: login failed with error:", detail);
                 throw new Error(detail);
             }
 
-            const data = await response.json();
-            console.log("api: login successful, returning data.");
-            return data;
+            return response.json();
         } catch (error) {
             if (error.message === 'Failed to fetch') {
                 throw new Error('Cannot connect to server. Check that the backend is running and CORS is configured.');
             }
-            console.error("api: login network or parsing error:", error);
             throw error;
         }
     },
@@ -147,23 +140,17 @@ export const authAPI = {
 export const userAPI = {
     // Get current user info
     getMe: async () => {
-        console.log("api: getMe starting...");
         try {
             const response = await fetch(`${API_BASE_URL}/users/me`, {
                 headers: getAuthHeaders(),
             });
-            console.log("api: getMe response status:", response.status);
 
             if (!response.ok) {
-                console.error("api: getMe failed");
                 throw new Error('Failed to fetch user info');
             }
 
-            const data = await response.json();
-            console.log("api: getMe successful");
-            return data;
+            return response.json();
         } catch (error) {
-            console.error("api: getMe error:", error);
             throw error;
         }
     },
@@ -318,7 +305,6 @@ export const adminAPI = {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            console.error("api: getImages failed with detail:", errorData.detail || 'Unknown error');
             throw new Error(errorData.detail || 'Failed to fetch images');
         }
 
@@ -406,12 +392,8 @@ export const resultsAPI = {
     getHistory: async (skip = 0, limit = 100) => {
         const headers = getAuthHeaders();
         const url = `${API_BASE_URL}/history?skip=${skip}&limit=${limit}`;
-        console.log("api: getHistory calling URL:", url);
-        console.log("api: getHistory headers:", headers);
 
-        const response = await fetch(url, {
-            headers: headers,
-        });
+        const response = await fetch(url, { headers });
 
         if (!response.ok) {
             throw new Error('Failed to fetch history');

@@ -141,46 +141,57 @@ const Results = () => {
         const thresholdPct = (thresholdRaw * 100).toFixed(2);
         const isAnom = result.status === 'Anomaly';
 
-        // ── Header bar ──────────────────────────────────────────────────────
-        doc.setFillColor(15, 15, 15);
-        doc.rect(0, 0, pageW, 28, 'F');
+        // ── Professional Header with Logo ────────────────────────────────────
+        // Dark header background
+        doc.setFillColor(15, 23, 42);  // slate-900
+        doc.rect(0, 0, pageW, 45, 'F');
 
-        // Logo box
-        doc.setFillColor(99, 102, 241);
-        doc.roundedRect(margin, 6, 16, 16, 2, 2, 'F');
-        doc.setFontSize(9);
+        // Logo - Modern hexagon design
+        doc.setFillColor(99, 102, 241);  // indigo-500
+        doc.circle(margin + 10, 18, 10, 'F');
+        doc.setFillColor(255, 255, 255);
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text('AD', margin + 5.5, 21);
+
+        // Project Title
+        doc.setFontSize(18);
         doc.setTextColor(255, 255, 255);
         doc.setFont('helvetica', 'bold');
-        doc.text('AD', margin + 4, 17);
-
-        // Title
-        doc.setFontSize(16);
-        doc.setTextColor(255, 255, 255);
-        doc.text('2D Image Anomaly Detection', margin + 22, 13);
-        doc.setFontSize(8);
+        doc.text('2D Industrial Anomaly Detection System', margin + 28, 15);
+        
+        // Subtitle
+        doc.setFontSize(9);
         doc.setFont('helvetica', 'normal');
-        doc.setTextColor(160, 160, 160);
-        doc.text('PatchCore · WideResNet-50 · MVTec AD Benchmark', margin + 22, 20);
+        doc.setTextColor(148, 163, 184);  // slate-400
+        doc.text('PatchCore Algorithm · WideResNet-50 Backbone · Deep Learning', margin + 28, 22);
+        
+        // University/Project Info
+        doc.setFontSize(8);
+        doc.setTextColor(100, 116, 139);  // slate-500
+        doc.text('Final Year Project 2026 · Department of Computer Science', margin + 28, 28);
 
-        // Date top-right
+        // Report metadata box
+        doc.setFillColor(30, 41, 59);  // slate-800
+        doc.roundedRect(margin, 33, contentW, 8, 1, 1, 'F');
         doc.setFontSize(7);
-        doc.setTextColor(120, 120, 120);
-        doc.text(`Generated: ${ts}`, pageW - margin, 10, { align: 'right' });
+        doc.setTextColor(203, 213, 225);  // slate-300
+        doc.text(`Report Generated: ${ts}`, margin + 2, 38);
+        doc.text(`Category: ${result.category?.toUpperCase() || 'BOTTLE'}`, pageW - margin - 2, 38, { align: 'right' });
 
         // ── Status banner ────────────────────────────────────────────────────
         const bannerColor = isAnom ? [220, 38, 38] : [22, 163, 74];
         doc.setFillColor(...bannerColor);
-        doc.rect(0, 28, pageW, 12, 'F');
-        doc.setFontSize(11);
+        doc.rect(0, 45, pageW, 14, 'F');
+        doc.setFontSize(12);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(255, 255, 255);
-        doc.text(
-            isAnom ? `⚠  ANOMALY DETECTED  —  Score: ${scorePct}%  |  Threshold: ${thresholdPct}%`
-                   : `✓  NORMAL  —  Score: ${scorePct}%  |  Threshold: ${thresholdPct}%`,
-            pageW / 2, 36, { align: 'center' }
-        );
+        const statusText = isAnom 
+            ? `⚠  ANOMALY DETECTED  —  Score: ${scorePct}%  |  Threshold: ${thresholdPct}%`
+            : `✓  NORMAL  —  Score: ${scorePct}%  |  Threshold: ${thresholdPct}%`;
+        doc.text(statusText, pageW / 2, 54, { align: 'center' });
 
-        let y = 48;
+        let y = 67;
 
         // ── Analysis Details table ───────────────────────────────────────────
         doc.setFontSize(10);

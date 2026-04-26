@@ -13,22 +13,26 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 # ── Threshold overrides ───────────────────────────────────────────────────────
 # Use the threshold stored in the pkl (from training) as the source of truth.
 # Only add entries here if you want to OVERRIDE the pkl value.
-# bottle_patchcore update thereshould.pkl — threshold comes from the pkl itself.
+# bottle_patch_core_updated.pkl — threshold comes from the pkl itself.
 KNOWN_THRESHOLDS: Dict[str, float] = {
-    # intentionally empty — trust the pkl threshold
+    # intentionally empty — trust the pkl threshold from training
 }
 
-# ── Alias map: category name → pkl filename (without .pkl extension) ─────────
-# Maps category name to the exact pkl filename stem.
-# If the stem ends with _patchcore it follows the old convention; otherwise the
-# full filename (minus .pkl) is stored here.
+# ── Alias map: category name → pkl filename stem ──────────────────────────────
+# Standard convention: {category}_patchcore.pkl  (auto-discovered — no entry needed)
+# Add entries ONLY for non-standard filenames.
 CATEGORY_ALIASES: Dict[str, str] = {
-    "bottle": "bottle_patchcore update thereshould",
 }
 
-# Stems that do NOT follow the "<stem>_patchcore.pkl" convention — their full
-# filename is "<stem>.pkl" directly.
-FULL_FILENAME_STEMS = {"bottle_patchcore update thereshould"}
+# Stems whose full filename is "{stem}.pkl" (not "{stem}_patchcore.pkl")
+FULL_FILENAME_STEMS: set = set()
+
+# All 15 MVTec AD categories
+ALL_MVTEC_CATEGORIES = [
+    "bottle", "cable", "capsule", "carpet", "grid",
+    "hazelnut", "leather", "metal_nut", "pill", "screw",
+    "tile", "toothbrush", "transistor", "wood", "zipper",
+]
 
 
 class ModelLoader:
@@ -112,13 +116,13 @@ class ModelLoader:
             with self._cache_lock:
                 cached = self._cache.get(resolved)
             if cached is not None:
-                return float(cached.get("threshold", 0.50))
+                return float(cached.get("threshold", 1.0))
             model_path = self._get_model_path(category)
             with open(model_path, "rb") as f:
                 data = pickle.load(f)
-            return float(data.get("threshold", 0.50))
+            return float(data.get("threshold", 1.0))
         except Exception:
-            return 0.50
+            return 1.0
 
     def update_threshold(self, category: str, threshold: float) -> None:
         """Persist a new threshold for a category (in-memory + KNOWN_THRESHOLDS)."""

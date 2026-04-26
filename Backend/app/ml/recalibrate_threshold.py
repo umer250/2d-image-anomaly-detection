@@ -58,15 +58,15 @@ def recalibrate(category: str, img_dir: str, sigma_multiplier: float = 2.0):
     device = bb.device
     memory_bank = torch.tensor(memory_bank_raw, dtype=torch.float32, device=device)
 
-    # 3. Process Images
-    normal_scores = []
-    print(f"Computing scores on {device}...")
+    # 3. Process Images and Calculate Raw Distances
+    raw_distances = []
+    print(f"Computing raw distances on {device}...")
     
     with torch.no_grad():
         for img_p in tqdm(image_paths, desc="Processing"):
             try:
                 # Use standard preprocessing
-                img_tensor, _ = preprocess_image(str(img_p), remove_bg=True)
+                img_tensor, _ = preprocess_image(str(img_p), remove_bg=False)
                 img_tensor = img_tensor.to(device)
                 
                 # Capture features
@@ -82,31 +82,37 @@ def recalibrate(category: str, img_dir: str, sigma_multiplier: float = 2.0):
                 b, c, h, w = embedding.shape
                 patches = embedding.reshape(c, h * w).T
                 
-                # Compute min-distances to memory bank
+                # Compute KNN distances to memory bank
+                num_neighbors = int(model_data.get("num_neighbors", 1))
                 dists = torch.cdist(patches, memory_bank, p=2.0)
-                min_dists, _ = dists.min(dim=1)
+                topk_dists, _ = dists.topk(num_neighbors, dim=1, largest=False)
+                avg_dists = topk_dists.mean(dim=1)
                 
-                # Original formula: raw / (raw + 1)
-                raw_max = min_dists.max().item()
-                score = float(raw_max / (raw_max + 1))
-                normal_scores.append(score)
+                raw_max = float(avg_dists.max().item())
+                raw_distances.append(raw_max)
                 
             except Exception as e:
                 print(f"\n⚠️  Skipped {img_p.name}: {e}")
 
-    if not normal_scores:
+    if not raw_distances:
         print("❌ Error: No scores were successfully computed.")
         return
 
-    # 4. Calculate New Threshold
+    # 4. Calculate p99_normal and Threshold
+    p99_normal = float(np.percentile(raw_distances, 99))
+    
+    # Normalize scores
+    normal_scores = [raw / p99_normal for raw in raw_distances]
+    
     mean_s = np.mean(normal_scores)
     std_s = np.std(normal_scores)
-    new_threshold = float(mean_s + sigma_multiplier * std_s)
+    new_threshold = float(max(1.0, mean_s + sigma_multiplier * std_s))
     
     print(f"\n[Results]")
-    print(f"  Mean Score: {mean_s:.4f}")
-    print(f"  Std Dev:    {std_s:.4f}")
-    print(f"  NEW Threshold: {new_threshold:.4f} (at {sigma_multiplier} sigma)")
+    print(f"  p99_normal (raw): {p99_normal:.4f}")
+    print(f"  Mean Score:       {mean_s:.4f}")
+    print(f"  Std Dev:          {std_s:.4f}")
+    print(f"  NEW Threshold:    {new_threshold:.4f} (at {sigma_multiplier} sigma)")
 
     # 5. Save Results
     # A. Update config JSON for dynamic loading
@@ -115,13 +121,17 @@ def recalibrate(category: str, img_dir: str, sigma_multiplier: float = 2.0):
     # B. Update the .pkl file for persistence
     model_path = model_loader._get_model_path(category)
     model_data["threshold"] = new_threshold
+    model_data["p99_normal"] = p99_normal
     model_data["normal_scores"] = normal_scores
+    model_data["raw_distances"] = raw_distances
     
     with open(model_path, "wb") as f:
         pickle.dump(model_data, f)
         
     print(f"\n✅ Success! Model '{category}' updated at {model_path}")
-    print(f"   Threshold is now persistent in .pkl and thresholds.json")
+    print(f"   p99_normal: {p99_normal:.4f}")
+    print(f"   Threshold: {new_threshold:.4f}")
+    print(f"   Values are now persistent in .pkl and thresholds.json")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Recalibrate PatchCore threshold using normal images.")

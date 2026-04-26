@@ -2,8 +2,10 @@
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, status, Query
 from fastapi.security import OAuth2PasswordRequestForm
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
 from app.crud import crud_user
@@ -15,9 +17,12 @@ from app.schemas.user import User, UserCreate, ResetPasswordRequest, ResetPasswo
 from app.utils.email import send_reset_password_email
 
 router = APIRouter()
+limiter = Limiter(key_func=get_remote_address)
 
 @router.post("/login", response_model=Token)
+@limiter.limit("10/minute")
 def login_access_token(
+    request: Request,
     db: Session = Depends(deps.get_db), form_data: OAuth2PasswordRequestForm = Depends()
 ) -> Any:
     """
@@ -46,7 +51,9 @@ def login_access_token(
     }
 
 @router.post("/signup", response_model=User)
+@limiter.limit("5/minute")
 def create_user_signup(
+    request: Request,
     *,
     db: Session = Depends(deps.get_db),
     user_in: UserCreate,
@@ -89,7 +96,9 @@ def create_user_signup(
     return user
 
 @router.post("/forgot-password")
+@limiter.limit("5/minute")
 def forgot_password(
+    request: Request,
     *,
     db: Session = Depends(deps.get_db),
     request_data: ResetPasswordRequest,

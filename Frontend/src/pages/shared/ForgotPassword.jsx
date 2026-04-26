@@ -41,13 +41,13 @@ const ForgotPassword = () => {
         <div className="min-h-screen bg-black flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden">
             {/* Background Watermark */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03]">
-                <Scan size={800} className="text-white" />
+                <img src="/logo.png" alt="Background Logo" className="w-[800px] h-[800px] object-contain opacity-[0.06]" />
             </div>
 
             <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
                 <div className="flex justify-center">
                     <div className="h-12 w-12 bg-white rounded-lg flex items-center justify-center">
-                        <Scan className="text-black" size={24} />
+                        <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
                     </div>
                 </div>
                 <h2 className="mt-6 text-center text-3xl font-extrabold text-white">

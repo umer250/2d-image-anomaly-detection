@@ -40,7 +40,7 @@ const History = () => {
             (item.filename || '').toLowerCase().includes(q) ||
             (item.status || '').toLowerCase().includes(q) ||
             (item.category || '').toLowerCase().includes(q) ||
-            (item.score != null ? `${(item.score * 100).toFixed(1)}%` : '').includes(q)
+            (item.score != null ? item.score.toFixed(3) : '').includes(q)
         );
     });
 
@@ -124,7 +124,7 @@ const History = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 font-mono text-zinc-400 text-xs">
-                                        {item.score != null ? `${(item.score * 100).toFixed(1)}%` : 'N/A'}
+                                        {item.score != null ? item.score.toFixed(3) : 'N/A'}
                                     </td>
                                     <td className="px-6 py-4 text-right">
                                         <button
@@ -203,8 +203,8 @@ const History = () => {
                         {/* Score row */}
                         <div className="px-6 pb-6 grid grid-cols-3 gap-4">
                             {[
-                                { label: 'Anomaly Score', value: selected.score != null ? `${(selected.score * 100).toFixed(1)}%` : 'N/A' },
-                                { label: 'Threshold', value: selected.threshold != null ? `${(selected.threshold * 100).toFixed(1)}%` : 'N/A' },
+                                { label: 'Anomaly Score', value: selected.score != null ? selected.score.toFixed(3) : 'N/A' },
+                                { label: 'Threshold', value: selected.threshold != null ? selected.threshold.toFixed(3) : 'N/A' },
                                 { label: 'Model', value: selected.model_version || 'PatchCore' },
                             ].map((s) => (
                                 <div key={s.label} className="bg-zinc-950 rounded-xl border border-zinc-800 p-4 text-center">

@@ -1,24 +1,73 @@
 # 2D Image Anomaly Detection Platform
 
-A full-stack industrial anomaly detection platform designed for 2D image inspection using deep learning.
+A full-stack industrial anomaly detection platform designed for 2D image inspection using PatchCore deep learning models.
 
 ## 🚀 Overview
 
-This platform allows users to upload images of industrial components and receive immediate feedback on potential anomalies. It features a modern React frontend, a high-performance FastAPI backend, and an extensible ML pipeline.
+This platform enables real-time anomaly detection in industrial components through image analysis. It features a modern React frontend, high-performance FastAPI backend, and production-ready PatchCore ML models trained on the MVTec AD dataset.
 
 ### Core Features
-- **User Dashboard:** Upload images, view analysis results, and track history.
-- **Admin Panel:** Monitor system analytics, manage users, and audit image results.
-- **ML Pipeline:** Pre-processing, inference, and heatmap generation for visual evidence.
-- **Security:** JWT Authentication, Role-Based Access Control (RBAC), and CORS protection.
+- **User Dashboard:** Upload images, view analysis results with heatmaps, and track detection history
+- **Admin Panel:** Monitor system analytics, manage users, and audit detection results
+- **ML Pipeline:** PatchCore-based anomaly detection with preprocessing, inference, and heatmap generation
+- **Security:** JWT authentication, role-based access control (RBAC), and CORS protection
 
 ## 🛠️ Tech Stack
 
-- **Frontend:** React, Vite, Tailwind CSS, Framer Motion, Lucide Icons, Recharts.
-- **Backend:** FastAPI, PostgreSQL, SQLAlchemy, Alembic.
-- **ML/Core:** TensorFlow/Keras (mocked for demo), OpenCV (Pillow), NumPy.
+- **Frontend:** React, Vite, Tailwind CSS, Framer Motion, Lucide Icons, Recharts
+- **Backend:** FastAPI, PostgreSQL, SQLAlchemy, Alembic
+- **ML/AI:** PatchCore (PyTorch), Wide ResNet-50, OpenCV, NumPy, Pillow
+
+## 📁 Project Structure
+
+```
+2d-image-anomaly-detection/
+├── Backend/                        # FastAPI backend
+│   ├── alembic/                    # Database migrations
+│   │   └── versions/               # Migration scripts
+│   ├── app/                        # Application source
+│   │   ├── api/v1/endpoints/       # REST API endpoints
+│   │   ├── core/                   # Config & security
+│   │   ├── crud/                   # Database operations
+│   │   ├── db/                     # DB session & base
+│   │   ├── ml/                     # ML inference pipeline
+│   │   ├── models/                 # SQLAlchemy models
+│   │   ├── schemas/                # Pydantic schemas
+│   │   └── utils/                  # Utilities (email, etc.)
+│   ├── ml_models/                  # Trained model files
+│   │   └── notebooks/              # Training notebooks
+│   ├── scripts/                    # Utility scripts
+│   ├── static/                     # Runtime file storage
+│   │   ├── heatmaps/               # Generated heatmaps (gitignored)
+│   │   └── uploads/                # Uploaded images (gitignored)
+│   ├── .env.example                # Environment template
+│   ├── alembic.ini                 # Alembic config
+│   ├── Dockerfile                  # Docker config
+│   ├── requirements.txt            # Python dependencies
+│   └── seed_admin.py               # Admin seeder script
+│
+├── Frontend/                       # React + Vite frontend
+│   ├── public/                     # Static public assets
+│   └── src/
+│       ├── components/             # Reusable UI components
+│       │   ├── icons/              # Icon components
+│       │   └── layout/             # Layout wrappers
+│       ├── context/                # React context (Auth)
+│       ├── pages/
+│       │   ├── admin/              # Admin pages
+│       │   ├── shared/             # Auth & public pages
+│       │   └── user/               # User dashboard pages
+│       ├── routes/                 # App routing
+│       └── services/               # API service layer
+│
+├── docs/                           # Project documentation
+├── .gitignore
+└── README.md
+```
 
 ## 🏁 Getting Started
+
+For a quick 5-minute setup, see [QUICK_START.md](QUICK_START.md).
 
 ### Prerequisites
 - Python 3.9+
@@ -67,8 +116,18 @@ npm run dev
 - **Soft Delete** logic for user management to preserve data integrity.
 - **Strict ML Contract** validation for future-proofing model integration.
 
-## 📊 ML Pipeline Contract
-The system enforces a strict JSON contract for ML results:
+## 📊 ML Pipeline
+
+The platform uses PatchCore models for anomaly detection:
+
+- **Model Architecture:** Wide ResNet-50 backbone with memory bank
+- **Training:** Kaggle GPU environment with MVTec AD dataset
+- **Performance:** >99% AUROC, <5% false positive rate
+- **Categories:** Bottle (expandable to 15 MVTec categories)
+
+For training new models, see [docs/TRAINING_GUIDE.md](docs/TRAINING_GUIDE.md).
+
+### ML Result Contract
 ```json
 {
   "image_id": 12,
@@ -79,5 +138,13 @@ The system enforces a strict JSON contract for ML results:
 }
 ```
 
+## 📚 Documentation
+
+- [Project Structure](PROJECT_STRUCTURE.md) - Detailed directory layout
+- [Training Guide](docs/TRAINING_GUIDE.md) - ML model training instructions
+- [Backend README](Backend/README.md) - Backend-specific documentation
+- [ML Models README](Backend/ml_models/README.md) - Model usage and configuration
+
 ## 📜 License
-Internal FYP Project - 2026.
+
+Internal FYP Project - 2026

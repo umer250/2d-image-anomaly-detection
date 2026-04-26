@@ -20,7 +20,7 @@ const decodeToken = (token) => {
                 .join('')
         );
         return JSON.parse(jsonPayload);
-    } catch (error) {
+    } catch {
         return null;
     }
 };
@@ -37,33 +37,24 @@ export const AuthProvider = ({ children }) => {
 
             if (storedToken) {
                 try {
-                    // Decode token to get user info
                     const decoded = decodeToken(storedToken);
 
-                    // Check if token is expired
                     if (decoded && decoded.exp * 1000 > Date.now()) {
-                        console.log("initAuth: Fetching user data...");
                         const userData = await userAPI.getMe();
-                        console.log("initAuth: User data fetched successfully:", userData);
                         setUser(userData);
                         setToken(storedToken);
                     } else {
-                        // Token expired, clear it
-                        console.log("initAuth: Token expired, clearing...");
+                        // Token expired
                         localStorage.removeItem('access_token');
                         setToken(null);
                         setUser(null);
                     }
-                } catch (error) {
-                    console.error('initAuth: Failed to fetch user:', error);
+                } catch {
                     localStorage.removeItem('access_token');
                     setToken(null);
                     setUser(null);
                 }
-            } else {
-                console.log("initAuth: No token found");
             }
-            console.log("initAuth: Loading set to false");
             setLoading(false);
         };
 
@@ -72,7 +63,6 @@ export const AuthProvider = ({ children }) => {
         // Multi-tab logout sync
         const handleStorageChange = (e) => {
             if (e.key === 'access_token' && !e.newValue) {
-                // Token was removed in another tab
                 setToken(null);
                 setUser(null);
             }
@@ -85,31 +75,17 @@ export const AuthProvider = ({ children }) => {
     // Login function
     const login = async (email, password) => {
         try {
-            console.log("AuthContext: login starting for", email);
             const response = await authAPI.login(email, password);
-            console.log("AuthContext: login response received", response);
-
             const { access_token } = response;
 
-            // Store token
             localStorage.setItem('access_token', access_token);
             setToken(access_token);
-            console.log("AuthContext: Token stored and state set in AuthContext");
 
-            // Decode token to get user info
-            const decoded = decodeToken(access_token);
-            console.log("AuthContext: Token decoded", decoded);
-
-            // Fetch full user details
-            console.log("AuthContext: Fetching full user details (getMe)...");
             const userData = await userAPI.getMe();
-            console.log("AuthContext: User details fetched successfully", userData);
             setUser(userData);
 
             return { success: true, role: userData.role };
         } catch (error) {
-            console.error("AuthContext: Login error caught in AuthContext:", error);
-            // Distinguish between a network/CORS failure and an actual auth failure
             if (error.message === 'Failed to fetch') {
                 throw new Error('Cannot connect to the server. Make sure the backend is running.');
             }
@@ -133,7 +109,6 @@ export const AuthProvider = ({ children }) => {
             if (timeout) clearTimeout(timeout);
             if (token && user) {
                 timeout = setTimeout(() => {
-                    console.warn("Session expired due to inactivity (30m)");
                     logout();
                 }, INACTIVITY_LIMIT);
             }
@@ -141,7 +116,6 @@ export const AuthProvider = ({ children }) => {
 
         const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
         events.forEach(event => window.addEventListener(event, resetTimer));
-
         resetTimer();
 
         return () => {
@@ -149,8 +123,6 @@ export const AuthProvider = ({ children }) => {
             events.forEach(event => window.removeEventListener(event, resetTimer));
         };
     }, [token, user, logout]);
-
-    // Register function (doesn't auto-login)
 
     const register = async (userData) => {
         try {
@@ -161,7 +133,6 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Reset password function
     const resetPassword = async (email, newPassword) => {
         try {
             await authAPI.resetPassword(email, newPassword);
@@ -171,13 +142,12 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    // Update user data (after profile update)
     const updateUser = async () => {
         try {
             const userData = await userAPI.getMe();
             setUser(userData);
-        } catch (error) {
-            console.error('Failed to update user:', error);
+        } catch {
+            // silently ignore — user stays as-is
         }
     };
 

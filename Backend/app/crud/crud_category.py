@@ -4,9 +4,9 @@ from typing import List, Optional
 from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryUpdate
 
-# All MVTec AD categories
+# All 15 official MVTec AD categories
 DEFAULT_CATEGORIES = [
-    "bottle", "bottle_latest", "bottle_v2", "cable", "capsule", "carpet", "grid",
+    "bottle", "cable", "capsule", "carpet", "grid",
     "hazelnut", "leather", "metal_nut", "pill", "screw",
     "tile", "toothbrush", "transistor", "wood", "zipper",
 ]

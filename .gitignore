@@ -1,32 +1,120 @@
-# Node.js
-Frontend/node_modules/
-Frontend/dist/
-Frontend/.env
-Frontend/src/public/
-
+# ===================================
 # Python
+# ===================================
 __pycache__/
 **/__pycache__/
 *.pyc
 *.pyo
+*.pyd
+.Python
 Backend/venv/
+Backend/env/
 Backend/.env
+*.egg-info/
+dist/
+build/
 
-# Local Data — uploads & generated heatmaps (not committed)
-Backend/uploads/
-Backend/heatmaps/
-Backend/static/uploads/
-Backend/static/heatmaps/
+# ===================================
+# Node.js / Frontend
+# ===================================
+Frontend/node_modules/
+Frontend/dist/
+Frontend/build/
+Frontend/.env
+Frontend/.env.local
+Frontend/.vite/
+Frontend/.vite-temp/
+
+# ===================================
+# Database
+# ===================================
+*.db
+*.sqlite
+*.sqlite3
+
+# ===================================
+# Runtime Data
+# ===================================
+# Uploaded images and generated heatmaps (keep folder structure via .gitkeep)
+Backend/uploads/*
+Backend/heatmaps/*
+Backend/static/uploads/*
+Backend/static/heatmaps/*
+!Backend/uploads/.gitkeep
+!Backend/heatmaps/.gitkeep
+!Backend/static/uploads/.gitkeep
+!Backend/static/heatmaps/.gitkeep
 static/
 
-# IDEs
+# ===================================
+# ML Models
+# ===================================
+# Large binary files - use Git LFS or external storage
+Backend/ml_models/*.pkl
+Backend/ml_models/*.pth
+Backend/ml_models/*.h5
+Backend/ml_models/*.onnx
+# Keep config files
+!Backend/ml_models/*.json
+
+# ===================================
+# IDEs and Editors
+# ===================================
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
 
-# Misc
-*.log
+# ===================================
+# Operating System
+# ===================================
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ===================================
+# Logs
+# ===================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===================================
+# Temporary Files
+# ===================================
+*.tmp
+*.temp
+*.bak
+*.swp
 search_results.csv
 
-# ML Models (large binary files — store separately or via Git LFS)
-Backend/ml_models/*.pkl
+# ===================================
+# Documentation Build
+# ===================================
+docs/_build/
+site/
+
+# ===================================
+# Testing
+# ===================================
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# ===================================
+# Deployment
+# ===================================
+.vercel
+.netlify

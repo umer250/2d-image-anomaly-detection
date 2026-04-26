@@ -1,10 +1,14 @@
 """
 PatchCore Inference Engine
 ==========================
-Model file: bottle_latest_patchcore.pkl
-Scoring:    9-NN average distance → max patch → normalize x/(x+1)
-Threshold:  0.7544 (recalibrated: mean+2std of normal memory bank scores)
-Preprocessing: resize(224) + ImageNet normalize ONLY (no CLAHE)
+Scoring matches notebook training EXACTLY:
+  1. 1-NN patch distances from memory bank
+  2. raw_score = mean of top-1% highest distances (top_k_ratio=0.01)
+  3. score = raw_score / p99_normal   (p99 from training normal images)
+  4. threshold from pkl (max-F1 on validation, default=1.0)
+
+Normal images  → score < threshold (~0.4–0.9)
+Anomaly images → score > threshold (~1.1–2.0+)
 """
 
 import os
@@ -146,29 +150,53 @@ def run_inference(
     patch_features = embedding.reshape(c, h * w).T   # (HW, C)
     print(f"[inference] Patch features: {patch_features.shape}")
 
-    # 9-NN average distance — matches the formula used when threshold was computed
-    memory_bank = torch.tensor(model_data["memory_bank"], dtype=torch.float32, device=device)
-    num_neighbors = int(model_data.get("num_neighbors", 9))
-    distances = torch.cdist(patch_features, memory_bank, p=2.0)
-    topk_dists, _ = distances.topk(num_neighbors, dim=1, largest=False)  # (HW, K)
-    avg_dists = topk_dists.mean(dim=1)                                    # (HW,)
+    # ── Top-K% scoring ──────────────────────────────────────────────────────────────────────────
+    # Uses SAME scoring as Kaggle notebook:
+    #   raw_score = mean of top-1% patch distances (top_k_ratio=0.01)
+    #   score = raw_score / p99_normal
+    # p99_normal is stored in pkl — computed from training normals with same method
+    # This ensures training and inference are perfectly aligned.
+    memory_bank  = torch.tensor(model_data["memory_bank"], dtype=torch.float32, device=device)
+    num_neighbors = int(model_data.get("num_neighbors", 1))
+    p99_normal    = float(model_data.get("p99_normal", 0.0))
 
-    raw_max = float(avg_dists.max().item())
-    anomaly_score = float(raw_max / (raw_max + 1))
+    # Pull top_k_ratio from config if available, else default to 0.01 (1%)
+    model_config  = model_data.get("config", {})
+    top_k_ratio   = float(model_config.get("top_k_ratio", 0.01))
+
+    # 1-NN distances: each patch vs memory bank
+    distances = torch.cdist(patch_features, memory_bank, p=2.0)  # (HW, M)
+    nn_dists, _ = distances.min(dim=1)                            # (HW,) nearest neighbor
+
+    # Top-K mean: mean of the top_k_ratio most anomalous patches
+    # This matches notebook training — robust vs single noisy patch
+    top_k = max(1, int(len(nn_dists) * top_k_ratio))
+    topk_vals, _ = torch.topk(nn_dists, k=top_k, largest=True)   # (top_k,)
+    raw_score    = float(topk_vals.mean().item())                  # mean of top-1%
+
+    if p99_normal > 0:
+        anomaly_score = float(raw_score / p99_normal)
+    else:
+        # Fallback if pkl has no p99_normal (old format)
+        anomaly_score = float(raw_score / (raw_score + 1))
+
     is_anomaly = bool(anomaly_score > threshold)
 
-    print(f"[inference] raw_max={raw_max:.4f}, score={anomaly_score:.4f}, threshold={threshold:.4f}, is_anomaly={is_anomaly}")
+    print(f"[inference] top_k={top_k}/{len(nn_dists)} ({top_k_ratio*100:.1f}%), "
+          f"raw_score={raw_score:.4f}, p99={p99_normal:.4f}, "
+          f"score={anomaly_score:.4f}, thr={threshold:.4f}, is_anomaly={is_anomaly}")
 
     # Build anomaly map for visualization
-    anomaly_map_raw = avg_dists.reshape(h, w).cpu().numpy()
+    # Use nn_dists (1-NN distances per patch) for spatial heatmap
+    anomaly_map_raw = nn_dists.reshape(h, w).cpu().numpy()  # (H, W)
     anomaly_map_viz = cv2.resize(
         anomaly_map_raw,
         (img_tensor.shape[3], img_tensor.shape[2]),
         interpolation=cv2.INTER_CUBIC,
     )
-    anomaly_map_viz = gaussian_filter(anomaly_map_viz, sigma=4)
-    map_min = anomaly_map_viz.min()
-    map_max = anomaly_map_viz.max()
+    anomaly_map_viz  = gaussian_filter(anomaly_map_viz, sigma=4)
+    map_min          = anomaly_map_viz.min()
+    map_max          = anomaly_map_viz.max()
     anomaly_map_norm = (anomaly_map_viz - map_min) / (map_max - map_min + 1e-8)
 
     inference_ms = round((time.time() - start_ts) * 1000, 2)

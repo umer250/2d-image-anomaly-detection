@@ -68,7 +68,6 @@ const UserManagement = () => {
     };
 
     const filteredUsers = users.filter(user => {
-        if (user.role === 'admin') return false;
         const q = searchQuery.toLowerCase();
         return (
             user.full_name?.toLowerCase().includes(q) ||
@@ -250,7 +249,12 @@ const UserManagement = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-5">
-                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border bg-indigo-500/5 text-indigo-400 border-indigo-500/20 font-sans">
+                                        <span className={clsx(
+                                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider border font-sans",
+                                            user.role === 'admin' 
+                                                ? "bg-amber-500/5 text-amber-500 border-amber-500/20" 
+                                                : "bg-indigo-500/5 text-indigo-400 border-indigo-500/20"
+                                        )}>
                                             <Shield size={10} />
                                             {user.role}
                                         </span>
@@ -260,13 +264,15 @@ const UserManagement = () => {
                                     </td>
                                     <td className="px-6 py-5 text-right">
                                         <div className="flex items-center justify-end gap-1">
-                                            <button
-                                                onClick={() => handlePromoteToAdmin(user.id)}
-                                                className="p-2 text-zinc-500 hover:text-purple-400 hover:bg-purple-500/10 rounded-xl transition-all"
-                                                title="Promote to Admin"
-                                            >
-                                                <ShieldCheck size={15} />
-                                            </button>
+                                            {user.role !== 'admin' && (
+                                                <button
+                                                    onClick={() => handlePromoteToAdmin(user.id)}
+                                                    className="p-2 text-zinc-500 hover:text-purple-400 hover:bg-purple-500/10 rounded-xl transition-all"
+                                                    title="Promote to Admin"
+                                                >
+                                                    <ShieldCheck size={15} />
+                                                </button>
+                                            )}
                                             <button
                                                 onClick={() => setModal({ isOpen: true, data: user })}
                                                 className="p-2 text-zinc-500 hover:text-white hover:bg-white/5 rounded-xl transition-all"

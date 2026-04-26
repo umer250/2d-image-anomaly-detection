@@ -10,14 +10,17 @@ import React from 'react';
  *   showText {bool}    show wordmark next to icon, default true
  *   textSize {number}  font size for wordmark in px, default 15
  */
-const AppLogo = ({ size = 32, color = '#6366f1', showText = true, textSize = 15 }) => {
+const AppLogo = ({ size, width, color = '#6366f1', showText = true, textSize = 15 }) => {
+    // Some components pass width instead of size
+    const actualSize = size || width || 32;
+
     return (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <img
-                src="/logo + favicon.png"
+                src="/logo.png"
                 alt="AnomalyDetect logo"
-                width={size}
-                height={size}
+                width={actualSize}
+                height={actualSize}
                 style={{ objectFit: 'contain', flexShrink: 0, borderRadius: 6 }}
             />
             {showText && (

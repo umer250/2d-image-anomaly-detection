@@ -17,3 +17,4 @@ class User(Base):
     reset_token = Column(String, index=True, nullable=True)
     reset_token_expiry = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    deleted_at = Column(DateTime(timezone=True), nullable=True)  # soft delete

@@ -3,9 +3,14 @@ from typing import Any, List
 import shutil
 import os
 import uuid
+import time
+import logging
+from datetime import datetime, timezone
 import numpy as np
 import torch
 import torch.nn.functional as F
+
+logger = logging.getLogger("app.ml.predict")
 from sqlalchemy.orm import Session
 from app.api import deps
 from app.models.image import Image
@@ -63,6 +68,13 @@ def model_status() -> Any:
     }
 
 
+@router.get("/model-threshold")
+def model_threshold(category: str = "bottle") -> Any:
+    """Return the current threshold for a given category."""
+    threshold = model_loader.get_threshold(category)
+    return {"category": category, "threshold": threshold}
+
+
 @router.post("/predict")
 async def predict(
     file: UploadFile = File(...),
@@ -85,7 +97,9 @@ async def predict(
         )
 
     try:
-        # 1. Save uploaded file
+        request_start = time.perf_counter()
+
+        # 1. Save uploaded file to disk
         file_ext = (
             file.filename.rsplit(".", 1)[-1].lower()
             if file.filename and "." in file.filename
@@ -97,7 +111,13 @@ async def predict(
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # 2 + 3. Inference (preprocessing is done inside run_inference to avoid double pass)
+        logger.info(
+            f"[predict] user={current_user.id} category={category} "
+            f"file={file.filename!r} saved→{filename}"
+        )
+
+        # 2. Run inference — preprocessing is handled inside run_inference
+        infer_start = time.perf_counter()
         try:
             result = run_inference(file_path, category=category, remove_bg=remove_bg)
         except FileNotFoundError as exc:
@@ -109,6 +129,8 @@ async def predict(
                     f"Available trained categories: {available}"
                 ),
             ) from exc
+        inference_ms = round((time.perf_counter() - infer_start) * 1000, 1)
+        logger.info(f"[predict] inference completed in {inference_ms} ms")
 
         score        = result["anomaly_score"]
         anomaly_map  = result["anomaly_map"]
@@ -116,11 +138,9 @@ async def predict(
         threshold    = result["threshold"]
         image_quality = result.get("image_quality", {})
 
-        # Return early with a clear message if image is too blurry
+        # Warn on blur — never block inference; frontend shows warning alongside results
         if image_quality.get("is_blurry", False):
-            # Only warn — never block inference for blur
-            # The model will still run; frontend can show the warning alongside results
-            print(f"[predict] Image quality warning: {image_quality.get('message')}")
+            logger.warning(f"[predict] Image quality warning: {image_quality.get('message')}")
 
         # 4. Generate heatmap
         heatmap_filename = f"heatmap_{filename.rsplit('.', 1)[0]}.png"
@@ -161,7 +181,8 @@ async def predict(
             details={
                 "original_filename": file.filename,
                 "category": category,
-                "inference_time_ms": result.get("inference_time_ms"),
+                "inference_time_ms": inference_ms,
+                "remove_bg": remove_bg,
             },
         )
         db.add(db_result)
@@ -185,19 +206,29 @@ async def predict(
         db.add(db_history)
         db.commit()
 
+        total_ms = round((time.perf_counter() - request_start) * 1000, 1)
+        logger.info(
+            f"[predict] done — is_anomaly={is_anomaly} score={score:.4f} "
+            f"inference={inference_ms}ms total={total_ms}ms"
+        )
+
         return {
-            "image_id":        db_image.id,
-            "anomaly_score":   round(float(score), 4),
-            "is_anomaly":      bool(is_anomaly),
-            "heatmap_path":    web_heatmap_path,
-            "hot_map_path":    web_hot_map_path,
-            "contour_path":    web_contour_path,
-            "comparison_path": web_comparison_path,
-            "original_path":   f"/static/uploads/{filename}",
-            "threshold":       threshold,
-            "category":        category,
-            "model_version":   MODEL_VERSION,
-            "image_quality":   image_quality,
+            "image_id":         db_image.id,
+            "history_id":       db_history.id,
+            "anomaly_score":    round(float(score), 4),
+            "is_anomaly":       bool(is_anomaly),
+            "heatmap_path":     web_heatmap_path,
+            "hot_map_path":     web_hot_map_path,
+            "contour_path":     web_contour_path,
+            "comparison_path":  web_comparison_path,
+            "original_path":    f"/static/uploads/{filename}",
+            "threshold":        threshold,
+            "category":         category,
+            "model_version":    MODEL_VERSION,
+            "image_quality":    image_quality,
+            "inference_time_ms": inference_ms,
+            "total_time_ms":    total_ms,
+            "processed_at":     datetime.now(timezone.utc).isoformat(),
         }
 
     except HTTPException:

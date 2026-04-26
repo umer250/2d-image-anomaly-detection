@@ -27,9 +27,19 @@ from app.schemas.category import Category as CategorySchema
 
 router = APIRouter()
 
-# ── Valid categories (MVTec AD) ───────────────────────────────────────────────
+# ── System password (from env, never hardcoded) ───────────────────────────────
+def _get_system_password() -> str:
+    pwd = os.getenv("SYSTEM_PASSWORD", "")
+    if not pwd:
+        raise HTTPException(
+            status_code=503,
+            detail="SYSTEM_PASSWORD environment variable is not configured.",
+        )
+    return pwd
+
+# ── Valid categories (MVTec AD — 15 official categories) ──────────────────────
 VALID_CATEGORIES = [
-    "bottle", "bottle_latest", "bottle_v2", "cable", "capsule", "carpet", "grid",
+    "bottle", "cable", "capsule", "carpet", "grid",
     "hazelnut", "leather", "metal_nut", "pill", "screw",
     "tile", "toothbrush", "transistor", "wood", "zipper",
 ]
@@ -228,10 +238,10 @@ def get_all_images(
             if up_date and not isinstance(up_date, str):
                 up_date = up_date.isoformat()
 
-            # Try to get richer data from History for this image (by filename + user)
+            # Try to get richer data from History for this image (by file_path)
             history_record = (
                 db.query(History)
-                .filter(History.filename == img.filename, History.user_id == img.user_id)
+                .filter(History.file_path == img.file_path)
                 .order_by(History.created_at.desc())
                 .first()
             )
@@ -412,9 +422,9 @@ def reset_system(
     """
     Soft-reset: clears physical upload/heatmap files from disk but keeps all
     database records intact (History, Image, Result rows are preserved).
-    Password: 12345.
+    Requires SYSTEM_PASSWORD env variable.
     """
-    if password != "12345":
+    if password != _get_system_password():
         raise HTTPException(status_code=400, detail="Invalid system password.")
     try:
         deleted_files = 0
@@ -432,6 +442,8 @@ def reset_system(
         return {
             "message": f"System reset successful. {deleted_files} physical files removed. Database records preserved."
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Reset failed: {str(e)}")
 
@@ -445,9 +457,9 @@ def wipe_all_users(
 ) -> Any:
     """
     Soft-wipe: sets is_active=False for all non-admin users.
-    Database records are preserved. Password: 12345.
+    Database records are preserved. Requires SYSTEM_PASSWORD env variable.
     """
-    if password != "12345":
+    if password != _get_system_password():
         raise HTTPException(status_code=400, detail="Invalid system password.")
     try:
         deactivated = (
@@ -554,7 +566,14 @@ def get_admin_settings(
         db.add(settings)
         db.commit()
         db.refresh(settings)
-    return settings
+
+    return {
+        "id": settings.id,
+        "user_id": settings.user_id,
+        "theme": settings.theme,
+        "notification_enabled": settings.notification_enabled,
+        "default_model": settings.default_model,
+    }
 
 
 @router.put("/settings")

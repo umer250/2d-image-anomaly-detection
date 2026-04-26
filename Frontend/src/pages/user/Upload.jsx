@@ -1,15 +1,11 @@
 import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Image as ImageIcon, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Image as ImageIcon, AlertCircle, CheckCircle2, ChevronDown } from 'lucide-react';
 import clsx from 'clsx';
 import { mlAPI } from '../../services/mlApi';
 
-// ── Constants ─────────────────────────────────────────────────────────────────
-const VALID_CATEGORIES = [
-    'bottle', 'bottle_latest', 'bottle_v2', 'cable', 'capsule', 'carpet', 'grid',
-    'hazelnut', 'leather', 'metal_nut', 'pill', 'screw',
-    'tile', 'toothbrush', 'transistor', 'wood', 'zipper',
-];
+// VALID_CATEGORIES is now fetched from backend to support all 15 MVTec AD types
+
 
 // ── Upload icon (inline SVG so we don't clash with the named import) ──────────
 const UploadSVG = ({ size = 48, className = '' }) => (
@@ -73,16 +69,34 @@ const Upload = () => {
     const [apiThreshold, setApiThreshold] = useState(null); // filled after response
 
     const [selectedCategory, setSelectedCategory] = useState('bottle');
+    const [categories, setCategories] = useState(['bottle']);
     const [removeBg, setRemoveBg] = useState(false);
-    const [modelThreshold, setModelThreshold] = useState(0.7544); // default from bottle_config.json
+    const [modelThreshold, setModelThreshold] = useState(null); // fetched from backend
+    const [thresholdLoading, setThresholdLoading] = useState(false);
     const [qualityWarning, setQualityWarning] = useState('');
 
-    // Fetch model threshold on mount
+    // Fetch categories on mount
     React.useEffect(() => {
-        import('../../services/mlApi').then(({ mlAPI }) => {
-            mlAPI.getModelInfo().catch(() => {});
-        });
+        mlAPI.getModelStatus()
+            .then((data) => {
+                if (data.all_categories && data.all_categories.length > 0) {
+                    setCategories(data.all_categories);
+                }
+            })
+            .catch((err) => console.error('Upload: Failed to fetch categories', err));
     }, []);
+
+    // Fetch threshold whenever category changes
+    React.useEffect(() => {
+        let cancelled = false;
+        setApiThreshold(null); // reset result threshold on category switch
+        setThresholdLoading(true);
+        mlAPI.getModelThreshold(selectedCategory)
+            .then((data) => { if (!cancelled) setModelThreshold(data.threshold); })
+            .catch(() => { if (!cancelled) setModelThreshold(null); })
+            .finally(() => { if (!cancelled) setThresholdLoading(false); });
+        return () => { cancelled = true; };
+    }, [selectedCategory]);
 
     // ── Drag & drop handlers ──────────────────────────────────────────────────
     const handleDrag = (e) => {
@@ -301,18 +315,23 @@ const Upload = () => {
                             <label className="block text-sm font-medium text-zinc-400 mb-2">
                                 Product Category
                             </label>
-                            <select
-                                value={selectedCategory}
-                                onChange={(e) => setSelectedCategory(e.target.value)}
-                                disabled={analyzing}
-                                className="block w-full rounded-md border border-zinc-700 bg-black text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5 px-3 capitalize disabled:opacity-60 disabled:cursor-not-allowed"
-                            >
-                                {VALID_CATEGORIES.map((cat) => (
-                                    <option key={cat} value={cat} className="capitalize">
-                                        {cat.replace('_', ' ')}
-                                    </option>
-                                ))}
-                            </select>
+                            <div className="relative group">
+                                <select
+                                    value={selectedCategory}
+                                    onChange={(e) => setSelectedCategory(e.target.value)}
+                                    disabled={analyzing}
+                                    className="block w-full rounded-md border border-zinc-700 bg-black text-white shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm py-2.5 px-3 pr-10 appearance-none capitalize disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                                >
+                                    {categories.map((cat) => (
+                                        <option key={cat} value={cat} className="bg-zinc-900 text-white">
+                                            {cat.replace('_', ' ')}
+                                        </option>
+                                    ))}
+                                </select>
+                                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-zinc-500 group-hover:text-indigo-400 transition-colors">
+                                    <ChevronDown size={18} />
+                                </div>
+                            </div>
                             <p className="mt-1.5 text-xs text-zinc-500">
                                 Select the MVTec AD product type that matches your image.
                             </p>
@@ -354,12 +373,25 @@ const Upload = () => {
                                 Anomaly Threshold
                             </label>
                             <div className="flex items-center gap-3 bg-zinc-800/60 border border-zinc-700 rounded-md py-2.5 px-3">
-                                <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                                <div className={clsx(
+                                    "w-2.5 h-2.5 rounded-full flex-shrink-0",
+                                    thresholdLoading ? "bg-zinc-500 animate-pulse" : "bg-indigo-500"
+                                )} />
                                 <span className="text-white text-sm font-mono">
-                                    {(apiThreshold ?? modelThreshold).toFixed(4)}
+                                    {thresholdLoading
+                                        ? '—'
+                                        : (apiThreshold ?? modelThreshold) != null
+                                            ? (apiThreshold ?? modelThreshold).toFixed(4)
+                                            : 'N/A'}
                                 </span>
                                 <span className="text-zinc-500 text-xs ml-auto">
-                                    {apiThreshold != null ? 'from model' : 'bottle default'}
+                                    {thresholdLoading
+                                        ? 'loading…'
+                                        : apiThreshold != null
+                                            ? 'from result'
+                                            : modelThreshold != null
+                                                ? 'from model'
+                                                : 'unavailable'}
                                 </span>
                             </div>
                             <p className="mt-1.5 text-xs text-zinc-500">

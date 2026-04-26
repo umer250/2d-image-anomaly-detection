@@ -55,7 +55,11 @@ const ImageMonitoring = () => {
                 setLoading(false);
             }
         };
+        
         fetchImages();
+        const intervalId = setInterval(fetchImages, 5000); // 5 second polling for real-time data
+        
+        return () => clearInterval(intervalId);
     }, []);
 
     // Reset to grid view when image changes
@@ -289,13 +293,13 @@ const ImageMonitoring = () => {
                                         <div className="flex justify-between text-[9px] font-sans">
                                             <span className="text-zinc-500 font-bold uppercase tracking-wider">Anomaly Score</span>
                                             <span className={clsx('font-bold', isAnomaly ? 'text-red-400' : 'text-green-400')}>
-                                                {(score * 100).toFixed(1)}%
+                                                {score.toFixed(3)}
                                             </span>
                                         </div>
                                         <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
                                             <div
                                                 className={clsx('h-full rounded-full transition-all duration-1000', isAnomaly ? 'bg-red-500' : 'bg-green-500')}
-                                                style={{ width: `${Math.min(score * 100, 100)}%` }}
+                                                style={{ width: `${Math.min((score / (result.threshold || 1)) * 50, 100)}%` }}
                                             />
                                         </div>
                                     </div>
@@ -355,7 +359,7 @@ const ImageMonitoring = () => {
                                 </button>
                             </div>
 
-                            <div className="flex-1 overflow-y-auto p-6 flex flex-col lg:flex-row gap-6">
+                            <div className="flex-1 overflow-y-auto p-6 flex flex-col lg:flex-row gap-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-zinc-800 [&::-webkit-scrollbar-thumb]:rounded-full">
                                 {/* Left: Image viewer with tabs + 2×2 grid */}
                                 <div className="flex-1 space-y-3">
                                     {/* View tabs */}
@@ -492,12 +496,12 @@ const ImageMonitoring = () => {
                                         <div>
                                             <div className="flex justify-between items-center mb-2">
                                                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Anomaly Score</span>
-                                                <span className="text-lg font-bold text-white font-outfit">{(score * 100).toFixed(2)}%</span>
+                                                <span className="text-lg font-bold text-white font-outfit">{score.toFixed(3)}</span>
                                             </div>
                                             <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
                                                 <div
                                                     className={clsx('h-full rounded-full transition-all duration-700', isAnomaly ? 'bg-red-500' : 'bg-green-500')}
-                                                    style={{ width: `${Math.min(score * 100, 100)}%` }}
+                                                    style={{ width: `${Math.min((score / (threshold || 1)) * 50, 100)}%` }}
                                                 />
                                             </div>
                                         </div>
@@ -507,13 +511,13 @@ const ImageMonitoring = () => {
                                             <div>
                                                 <div className="flex justify-between items-center mb-1">
                                                     <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Threshold</span>
-                                                    <span className="text-sm font-bold text-indigo-400 font-outfit">{(threshold * 100).toFixed(2)}%</span>
+                                                    <span className="text-sm font-bold text-indigo-400 font-outfit">{threshold.toFixed(3)}</span>
                                                 </div>
                                                 <div className="h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                                                    <div className="h-full bg-indigo-500/60 rounded-full" style={{ width: `${Math.min(threshold * 100, 100)}%` }} />
+                                                    <div className="h-full bg-indigo-500/60 rounded-full" style={{ width: `50%` }} />
                                                 </div>
                                                 <p className="text-[9px] text-zinc-600 mt-1.5 font-sans">
-                                                    Formula: score ({(score * 100).toFixed(1)}%) {'>'} threshold ({(threshold * 100).toFixed(1)}%) → {isAnomaly ? 'Anomaly ✓' : 'Normal ✓'}
+                                                    Formula: score ({score.toFixed(3)}) {'>'} threshold ({threshold.toFixed(3)}) → {isAnomaly ? 'Anomaly ✓' : 'Normal ✓'}
                                                 </p>
                                             </div>
                                         )}

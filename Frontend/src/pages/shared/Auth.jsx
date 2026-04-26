@@ -26,19 +26,48 @@ const Auth = () => {
         name: '' // Only for register
     });
 
+    const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' });
+
+    const validateEmail = (email) => {
+        const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return re.test(email);
+    };
+
     useEffect(() => {
         // Update mode if URL changes directly
         setIsLogin(location.pathname !== '/register');
         setError('');
         setSuccessMessage(location.state?.message || '');
         setFormData({ email: '', password: '', name: '' });
+        setFieldErrors({ email: '', password: '' });
     }, [location.pathname]);
 
     const handleChange = (e) => {
+        const { name, value } = e.target;
         setFormData({
             ...formData,
-            [e.target.name]: e.target.value
+            [name]: value
         });
+        
+        // Clear field error when user starts typing
+        if (fieldErrors[name]) {
+            setFieldErrors(prev => ({ ...prev, [name]: '' }));
+        }
+    };
+
+    const handleBlur = (e) => {
+        const { name, value } = e.target;
+        let error = '';
+        if (name === 'email' && value) {
+            if (!validateEmail(value)) {
+                error = 'Please enter a valid email address';
+            }
+        } else if (name === 'password' && value) {
+            if (value.length < 8) {
+                error = 'Password must be at least 8 characters long';
+            }
+        }
+        setFieldErrors(prev => ({ ...prev, [name]: error }));
     };
 
     const toggleMode = (mode) => {
@@ -51,6 +80,23 @@ const Auth = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Final validation check before submit
+        let hasError = false;
+        if (!validateEmail(formData.email)) {
+            handleBlur({ target: { name: 'email', value: formData.email } });
+            hasError = true;
+        }
+        if (formData.password.length < 8) {
+            handleBlur({ target: { name: 'password', value: formData.password } });
+            hasError = true;
+        }
+        
+        if (hasError) {
+            setError('Please fix the validation errors in the form.');
+            return;
+        }
+
         setLoading(true);
         setError('');
         setSuccessMessage('');
@@ -99,13 +145,13 @@ const Auth = () => {
         <div className="min-h-screen bg-black flex flex-col justify-center py-12 sm:px-6 lg:px-8 relative overflow-hidden z-50">
             {/* Background Watermark */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-[0.03]">
-                <Scan size={800} className="text-white" />
+                <img src="/logo.png" alt="Background Logo" className="w-[800px] h-[800px] object-contain opacity-[0.06]" />
             </div>
 
             <div className="sm:mx-auto sm:w-full sm:max-w-md relative z-10">
                 <div className="flex justify-center">
                     <div className="h-12 w-12 bg-white rounded-lg flex items-center justify-center shadow-[0_0_20px_rgba(255,255,255,0.3)]">
-                        <Scan className="text-black" size={24} />
+                        <img src="/logo.png" alt="Logo" className="w-8 h-8 object-contain" />
                     </div>
                 </div>
                 <h2 className="mt-6 text-center text-3xl font-extrabold text-white">
@@ -186,10 +232,19 @@ const Auth = () => {
                                         required
                                         value={formData.email}
                                         onChange={handleChange}
-                                        className="focus:ring-white focus:border-white block w-full pl-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
+                                        onBlur={handleBlur}
+                                        className={clsx(
+                                            "block w-full pl-10 sm:text-sm rounded-md py-2 bg-black text-white placeholder-zinc-500 transition-colors",
+                                            fieldErrors.email 
+                                                ? "border-red-500 focus:ring-red-500 focus:border-red-500" 
+                                                : "border-zinc-700 focus:ring-white focus:border-white"
+                                        )}
                                         placeholder="you@example.com"
                                     />
                                 </div>
+                                {fieldErrors.email && (
+                                    <p className="mt-1.5 text-xs font-medium text-red-400 animate-in fade-in duration-200">{fieldErrors.email}</p>
+                                )}
                             </div>
 
                             {/* Password Field */}
@@ -209,7 +264,13 @@ const Auth = () => {
                                         required
                                         value={formData.password}
                                         onChange={handleChange}
-                                        className="focus:ring-white focus:border-white block w-full pl-10 pr-10 sm:text-sm border-zinc-700 rounded-md py-2 bg-black text-white placeholder-zinc-500"
+                                        onBlur={handleBlur}
+                                        className={clsx(
+                                            "block w-full pl-10 pr-10 sm:text-sm rounded-md py-2 bg-black text-white placeholder-zinc-500 transition-colors",
+                                            fieldErrors.password 
+                                                ? "border-red-500 focus:ring-red-500 focus:border-red-500" 
+                                                : "border-zinc-700 focus:ring-white focus:border-white"
+                                        )}
                                         placeholder="••••••••"
                                     />
                                     <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
@@ -226,6 +287,9 @@ const Auth = () => {
                                         </button>
                                     </div>
                                 </div>
+                                {fieldErrors.password && (
+                                    <p className="mt-1.5 text-xs font-medium text-red-400 animate-in fade-in duration-200">{fieldErrors.password}</p>
+                                )}
                             </div>
                         </div>
 
@@ -272,14 +336,7 @@ const Auth = () => {
                         </div>
                     </form>
 
-                    {/* Footer Info */}
-                    {isLogin && (
-                        <div className="mt-6 text-center">
-                            <div className="text-sm text-zinc-500 mb-4">
-                                Demo: admin@example.com / password
-                            </div>
-                        </div>
-                    )}
+
                 </div>
             </div>
         </div>
