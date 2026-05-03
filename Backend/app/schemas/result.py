@@ -1,4 +1,4 @@
-from typing import Optional, Any
+﻿from typing import Optional, Any
 from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
@@ -27,7 +27,6 @@ class Result(ResultBase):
     id: int
     created_at: datetime
 
-    # Extra fields for UI convenience (populated manually or via property)
     filename: Optional[str] = None
     upload_date: Optional[datetime] = None
 

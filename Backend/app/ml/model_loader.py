@@ -1,33 +1,22 @@
-import os
+﻿import os
 import pickle
 import threading
 from typing import Dict, Any, List
 
-# Define the models directory
 MODELS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "ml_models",
 )
 os.makedirs(MODELS_DIR, exist_ok=True)
 
-# ── Threshold overrides ───────────────────────────────────────────────────────
-# Use the threshold stored in the pkl (from training) as the source of truth.
-# Only add entries here if you want to OVERRIDE the pkl value.
-# bottle_patch_core_updated.pkl — threshold comes from the pkl itself.
 KNOWN_THRESHOLDS: Dict[str, float] = {
-    # intentionally empty — trust the pkl threshold from training
 }
 
-# ── Alias map: category name → pkl filename stem ──────────────────────────────
-# Standard convention: {category}_patchcore.pkl  (auto-discovered — no entry needed)
-# Add entries ONLY for non-standard filenames.
 CATEGORY_ALIASES: Dict[str, str] = {
 }
 
-# Stems whose full filename is "{stem}.pkl" (not "{stem}_patchcore.pkl")
 FULL_FILENAME_STEMS: set = set()
 
-# All 15 MVTec AD categories
 ALL_MVTEC_CATEGORIES = [
     "bottle", "cable", "capsule", "carpet", "grid",
     "hazelnut", "leather", "metal_nut", "pill", "screw",
@@ -48,7 +37,6 @@ class ModelLoader:
             return cls._instance
 
     def _resolve_category(self, category: str) -> str:
-        """Resolve a category alias to its canonical pkl stem."""
         return CATEGORY_ALIASES.get(category, category)
 
     def _get_model_path(self, category: str) -> str:
@@ -61,14 +49,12 @@ class ModelLoader:
         return os.path.exists(self._get_model_path(category))
 
     def get_available_categories(self) -> List[str]:
-        """Scan ml_models for available PatchCore models; also expose aliases."""
         files = os.listdir(MODELS_DIR)
         found_stems = {
             f.replace("_patchcore.pkl", "")
             for f in files
             if f.endswith("_patchcore.pkl")
         }
-        # Also include full-filename stems that exist
         for stem in FULL_FILENAME_STEMS:
             if os.path.exists(os.path.join(MODELS_DIR, f"{stem}.pkl")):
                 found_stems.add(stem)
@@ -79,11 +65,6 @@ class ModelLoader:
         return sorted(valid_cats)
 
     def get_model(self, category: str) -> Dict[str, Any]:
-        """
-        Load a category model into memory (thread-safe cache).
-        Resolves aliases automatically.
-        Raises FileNotFoundError if the model doesn't exist.
-        """
         resolved = self._resolve_category(category)
         if not self.is_model_available(category):
             raise FileNotFoundError(f"Model not trained for category: {category}")
@@ -95,7 +76,6 @@ class ModelLoader:
                     self._cache[resolved] = pickle.load(f)
             model_data = dict(self._cache[resolved])  # shallow copy
 
-        # Apply KNOWN_THRESHOLDS override only if explicitly set
         if category in KNOWN_THRESHOLDS:
             model_data["threshold"] = KNOWN_THRESHOLDS[category]
         elif resolved in KNOWN_THRESHOLDS:
@@ -104,14 +84,11 @@ class ModelLoader:
         return model_data
 
     def get_threshold(self, category: str) -> float:
-        """Return the effective threshold for a category."""
-        # Check explicit overrides first
         if category in KNOWN_THRESHOLDS:
             return KNOWN_THRESHOLDS[category]
         resolved = self._resolve_category(category)
         if resolved in KNOWN_THRESHOLDS:
             return KNOWN_THRESHOLDS[resolved]
-        # Fall back to value stored in pkl
         try:
             with self._cache_lock:
                 cached = self._cache.get(resolved)
@@ -125,7 +102,6 @@ class ModelLoader:
             return 1.0
 
     def update_threshold(self, category: str, threshold: float) -> None:
-        """Persist a new threshold for a category (in-memory + KNOWN_THRESHOLDS)."""
         resolved = self._resolve_category(category)
         KNOWN_THRESHOLDS[category] = round(threshold, 6)
         KNOWN_THRESHOLDS[resolved] = round(threshold, 6)
@@ -133,7 +109,6 @@ class ModelLoader:
             self._cache.pop(resolved, None)
 
     def get_model_info(self, category: str) -> Dict[str, Any]:
-        """Get metadata about a specific category model."""
         model_path = self._get_model_path(category)
         if not os.path.exists(model_path):
             return {
@@ -164,5 +139,4 @@ class ModelLoader:
         }
 
 
-# Global singleton instance
 model_loader = ModelLoader()

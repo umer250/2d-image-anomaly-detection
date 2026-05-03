@@ -1,14 +1,4 @@
-"""
-PatchCore Threshold Recalibration Utility
-=========================================
-Recalibrates the anomaly threshold using a directory of 'good' (normal) images.
-Formula: Threshold = Mean(Scores) + 2 * Std(Scores)
-
-Usage:
-    cd Backend
-    python -m app.ml.recalibrate_threshold --category bottle --img_dir "C:/path/to/bottle/train/good"
-"""
-
+﻿
 import os
 import sys
 import argparse
@@ -20,7 +10,6 @@ from tqdm import tqdm
 from pathlib import Path
 from PIL import Image
 
-# Add root to sys.path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.ml.model_loader import model_loader
@@ -31,7 +20,6 @@ def recalibrate(category: str, img_dir: str, sigma_multiplier: float = 2.0):
     print(f"\n[Recalibrate] Starting recalibration for category: '{category}'")
     print(f"[Recalibrate] Dataset Path: {img_dir}")
     
-    # 1. Check Model & Directory
     if not model_loader.is_model_available(category):
         print(f"❌ Error: Model for '{category}' not found in ml_models/")
         return
@@ -48,31 +36,25 @@ def recalibrate(category: str, img_dir: str, sigma_multiplier: float = 2.0):
     
     print(f"Found {len(image_paths)} images. Loading model...")
 
-    # 2. Get Model Data
     model_data = model_loader.get_model(category)
     memory_bank_raw = model_data["memory_bank"]
     
-    # Use the backbone from model_loader/inference logic
     from app.ml.inference import _get_backbone
     bb = _get_backbone()
     device = bb.device
     memory_bank = torch.tensor(memory_bank_raw, dtype=torch.float32, device=device)
 
-    # 3. Process Images and Calculate Raw Distances
     raw_distances = []
     print(f"Computing raw distances on {device}...")
     
     with torch.no_grad():
         for img_p in tqdm(image_paths, desc="Processing"):
             try:
-                # Use standard preprocessing
                 img_tensor, _ = preprocess_image(str(img_p), remove_bg=False)
                 img_tensor = img_tensor.to(device)
                 
-                # Capture features
                 bb.model(img_tensor)
                 
-                # Import features captured by hooks in inference.py
                 from app.ml.inference import _features
                 l2 = bb.avg_pool(_features["layer2"])
                 l3 = bb.avg_pool(_features["layer3"])
@@ -82,7 +64,6 @@ def recalibrate(category: str, img_dir: str, sigma_multiplier: float = 2.0):
                 b, c, h, w = embedding.shape
                 patches = embedding.reshape(c, h * w).T
                 
-                # Compute KNN distances to memory bank
                 num_neighbors = int(model_data.get("num_neighbors", 1))
                 dists = torch.cdist(patches, memory_bank, p=2.0)
                 topk_dists, _ = dists.topk(num_neighbors, dim=1, largest=False)
@@ -98,10 +79,8 @@ def recalibrate(category: str, img_dir: str, sigma_multiplier: float = 2.0):
         print("❌ Error: No scores were successfully computed.")
         return
 
-    # 4. Calculate p99_normal and Threshold
     p99_normal = float(np.percentile(raw_distances, 99))
     
-    # Normalize scores
     normal_scores = [raw / p99_normal for raw in raw_distances]
     
     mean_s = np.mean(normal_scores)
@@ -114,11 +93,8 @@ def recalibrate(category: str, img_dir: str, sigma_multiplier: float = 2.0):
     print(f"  Std Dev:          {std_s:.4f}")
     print(f"  NEW Threshold:    {new_threshold:.4f} (at {sigma_multiplier} sigma)")
 
-    # 5. Save Results
-    # A. Update config JSON for dynamic loading
     save_threshold(category, new_threshold)
     
-    # B. Update the .pkl file for persistence
     model_path = model_loader._get_model_path(category)
     model_data["threshold"] = new_threshold
     model_data["p99_normal"] = p99_normal

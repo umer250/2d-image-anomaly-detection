@@ -1,13 +1,4 @@
-"""
-FastAPI application entry point.
-
-Startup sequence:
-    1. Create required directories (static, uploads, heatmaps)
-    2. Run DB migrations check (Alembic)
-    3. Auto-seed all 15 MVTec categories (idempotent)
-    4. Auto-create admin account if ADMIN_EMAIL + ADMIN_PASSWORD are set (idempotent)
-"""
-
+﻿
 import os
 import re
 import logging
@@ -26,10 +17,8 @@ from app.api.v1.api import api_router
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("app.startup")
 
-# ── Rate limiter ───────────────────────────────────────────────────────────────
 limiter = Limiter(key_func=get_remote_address)
 
-# ── Required directories ───────────────────────────────────────────────────────
 _REQUIRED_DIRS = ["static", "uploads", "heatmaps", "static/uploads", "static/heatmaps"]
 
 
@@ -39,7 +28,6 @@ def _create_directories():
 
 
 def _seed_db():
-    """Idempotently seed categories and optionally the admin account."""
     try:
         from app.db.session import SessionLocal
         from app.crud.crud_category import seed_default_categories
@@ -48,22 +36,19 @@ def _seed_db():
 
         db = SessionLocal()
         try:
-            # ── Seed all 15 MVTec categories ──────────────────────────────────
             inserted = seed_default_categories(db)
             if inserted:
                 logger.info(f"[startup] Seeded {inserted} new category records.")
             else:
                 logger.info("[startup] Categories already up to date.")
 
-            # ── Auto-create admin account if env vars are set ─────────────────
-            admin_email = os.getenv("ADMIN_EMAIL")
-            admin_password = os.getenv("ADMIN_PASSWORD")
-            admin_name = os.getenv("ADMIN_FULL_NAME", "System Administrator")
+            admin_email = settings.ADMIN_EMAIL
+            admin_password = settings.ADMIN_PASSWORD
+            admin_name = settings.ADMIN_FULL_NAME or "System Administrator"
 
             if admin_email and admin_password:
                 existing = crud_user.get_user_by_email(db, email=admin_email)
                 if not existing:
-                    # Validate password complexity
                     pwd_ok = re.match(
                         r"^(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*]).{8,}$",
                         admin_password,
@@ -97,13 +82,11 @@ def _seed_db():
         finally:
             db.close()
     except Exception as exc:
-        # Non-fatal — app still starts even if seeding fails (e.g., DB not ready yet)
         logger.error(f"[startup] DB seed failed (non-fatal): {exc}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan: startup → yield → shutdown."""
     logger.info("[startup] Initializing 2D Anomaly Detection API...")
     _create_directories()
     _seed_db()
@@ -112,7 +95,6 @@ async def lifespan(app: FastAPI):
     logger.info("[shutdown] Shutting down.")
 
 
-# ── FastAPI app ────────────────────────────────────────────────────────────────
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description=(
@@ -126,13 +108,10 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# ── Rate limiter ───────────────────────────────────────────────────────────────
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-# ── CORS ───────────────────────────────────────────────────────────────────────
 _cors_origins = settings.BACKEND_CORS_ORIGINS
-# If still wildcard (dev fallback), warn loudly
 if _cors_origins == ["*"]:
     logger.warning("[startup] CORS is set to '*' — restrict BACKEND_CORS_ORIGINS in production!")
 
@@ -144,16 +123,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ── Routers ────────────────────────────────────────────────────────────────────
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
-# ── Static file mounts ─────────────────────────────────────────────────────────
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 app.mount("/heatmaps", StaticFiles(directory="heatmaps"), name="heatmaps")
 
 
-# ── Health & Root ──────────────────────────────────────────────────────────────
 @app.get("/", tags=["health"])
 def root():
     return {

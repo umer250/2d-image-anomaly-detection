@@ -1,4 +1,4 @@
-from typing import Any, List
+﻿from typing import Any, List
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.api import deps
@@ -16,19 +16,13 @@ def read_history(
     limit: int = 100,
     current_user: User = Depends(deps.get_current_active_user),
 ) -> Any:
-    """
-    Retrieve upload history.
-    Users see their own history, admins see all.
-    """
     if current_user.role == "admin":
         history_records = crud_history.get_all_history(db, skip=skip, limit=limit)
     else:
         history_records = crud_history.get_history_by_user(db, user_id=current_user.id, skip=skip, limit=limit)
     
-    # Ensure items are scema-compatible
     result = []
     for record in history_records:
-        # Create a dict that matches HistorySchema
         item = {
             "id": record.id,
             "user_id": record.user_id,

@@ -1,4 +1,4 @@
-import os
+﻿import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List, Optional
 
@@ -10,25 +10,20 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 480
     ENVIRONMENT: str = "development"
 
-    # CORS
     BACKEND_CORS_ORIGINS: List[str] = ["*"]
 
-    # Database
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "password"
     POSTGRES_DB: str = "anomaly_detection_db"
     DATABASE_URL: Optional[str] = None
 
-    # Admin bootstrap (read by startup lifespan — never created via signup)
     ADMIN_EMAIL: Optional[str] = None
     ADMIN_PASSWORD: Optional[str] = None
     ADMIN_FULL_NAME: str = "System Administrator"
 
-    # System operations password (reset-system, wipe-all-users)
     SYSTEM_PASSWORD: Optional[str] = None
 
-    # Email
     SMTP_TLS: bool = True
     SMTP_SSL: bool = False
     SMTP_PORT: int = 587
@@ -38,7 +33,6 @@ class Settings(BaseSettings):
     EMAILS_FROM_EMAIL: Optional[str] = None
     EMAILS_FROM_NAME: Optional[str] = "2D Anomaly Detection"
 
-    # Frontend
     FRONTEND_URL: str = "http://localhost:3000"
 
     model_config = SettingsConfigDict(

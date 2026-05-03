@@ -1,27 +1,4 @@
-"""
-PatchCore Training Script
-=========================
-Trains a PatchCore model for a given MVTec category and saves it as
-`<category>_patch_core_updated.pkl` in the ml_models directory.
-
-The trained .pkl contains:
-    memory_bank   : np.ndarray  (N, C) — coreset-reduced patch embeddings
-    threshold     : float       — mean + sigma * std of normal image scores
-    num_neighbors : int         — K for KNN scoring (default 9)
-    config        : dict        — training metadata (auroc, backbone, etc.)
-
-Usage:
-    cd Backend
-    python -m app.ml.train --category bottle --train_dir "C:/path/to/bottle/train/good"
-
-Optional flags:
-    --test_dir      Path to test images (for AUROC evaluation after training)
-    --coreset_ratio Fraction of patches to keep in memory bank (default 0.1)
-    --num_neighbors K for KNN scoring (default 9)
-    --sigma         Sigma multiplier for threshold = mean + sigma*std (default 2.0)
-    --output_name   Override output filename stem (default: <category>_patch_core_updated)
-"""
-
+﻿
 import os
 import sys
 import argparse
@@ -33,13 +10,11 @@ from pathlib import Path
 from tqdm import tqdm
 from PIL import Image
 
-# Ensure project root is on sys.path when run as a module
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from app.ml.preprocess import preprocess_image
 from app.ml.inference import _get_backbone, _features
 
-# ── Constants ─────────────────────────────────────────────────────────────────
 MODELS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "ml_models",
@@ -48,8 +23,6 @@ os.makedirs(MODELS_DIR, exist_ok=True)
 
 SUPPORTED_EXTS = {".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".webp"}
 
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _collect_images(directory: str) -> list:
     p = Path(directory)
@@ -62,10 +35,6 @@ def _collect_images(directory: str) -> list:
 
 
 def _extract_patches(img_path: str, bb, device: torch.device) -> torch.Tensor:
-    """
-    Run a single image through the backbone and return patch embeddings.
-    Returns tensor of shape (H*W, C).
-    """
     img_tensor, _ = preprocess_image(str(img_path), remove_bg=False)
     img_tensor = img_tensor.to(device)
 
@@ -83,18 +52,13 @@ def _extract_patches(img_path: str, bb, device: torch.device) -> torch.Tensor:
 
 
 def _greedy_coreset(features: np.ndarray, ratio: float) -> np.ndarray:
-    """
-    Greedy coreset subsampling — keeps `ratio` fraction of patches.
-    Uses random initialisation + iterative farthest-point selection.
-    """
     n = features.shape[0]
     target = max(1, int(n * ratio))
     if target >= n:
         return features
 
-    print(f"  Coreset: {n} → {target} patches ({ratio*100:.0f}%)")
+    print(f"  Coreset: {n} -> {target} patches ({ratio*100:.0f}%)")
 
-    # Start from a random point
     rng = np.random.default_rng(42)
     selected = [int(rng.integers(n))]
     min_dists = np.full(n, np.inf)
@@ -110,11 +74,6 @@ def _greedy_coreset(features: np.ndarray, ratio: float) -> np.ndarray:
 
 def _score_image(img_path: str, memory_bank: torch.Tensor, bb, device: torch.device,
                  num_neighbors: int) -> tuple:
-    """
-    Score a single image against the memory bank.
-    Returns (raw_max_distance, normalized_score).
-    raw_max is used for p99 calculation, normalized_score for threshold.
-    """
     patches = _extract_patches(img_path, bb, device)
     dists = torch.cdist(patches, memory_bank, p=2.0)
     topk, _ = dists.topk(num_neighbors, dim=1, largest=False)
@@ -122,8 +81,6 @@ def _score_image(img_path: str, memory_bank: torch.Tensor, bb, device: torch.dev
     raw_max = float(avg_dists.max().item())
     return raw_max, raw_max
 
-
-# ── Main training function ────────────────────────────────────────────────────
 
 def train(
     category: str,
@@ -142,16 +99,13 @@ def train(
     print(f"  Num neighbors: {num_neighbors}")
     print(f"  Sigma        : {sigma}")
 
-    # 1. Collect training images (normal/good only)
     train_images = _collect_images(train_dir)
     print(f"\n  Found {len(train_images)} training images.")
 
-    # 2. Load backbone
     bb = _get_backbone()
     device = bb.device
     print(f"  Backbone: WideResNet50 on {device}")
 
-    # 3. Extract patch embeddings from all training images
     print("\n[1/4] Extracting patch embeddings...")
     all_patches = []
     for img_path in tqdm(train_images, desc="  Embedding"):
@@ -167,14 +121,12 @@ def train(
     all_patches_np = np.concatenate(all_patches, axis=0)
     print(f"  Total patches: {all_patches_np.shape[0]:,}  dim={all_patches_np.shape[1]}")
 
-    # 4. Coreset subsampling
     print("\n[2/4] Coreset subsampling...")
     memory_bank_np = _greedy_coreset(all_patches_np, coreset_ratio)
     print(f"  Memory bank size: {memory_bank_np.shape[0]:,} patches")
 
     memory_bank = torch.tensor(memory_bank_np, dtype=torch.float32, device=device)
 
-    # 5. Compute p99_normal and threshold from normal training scores
     print("\n[3/4] Computing p99_normal and threshold from training scores...")
     raw_distances = []
     for img_path in tqdm(train_images, desc="  Scoring"):
@@ -184,17 +136,13 @@ def train(
         except Exception as e:
             print(f"\n  ⚠  Skipped {img_path.name}: {e}")
 
-    # Calculate p99_normal (99th percentile of normal patch distances)
     p99_normal = float(np.percentile(raw_distances, 99))
     
-    # Normalize scores using p99_normal
     normal_scores = [raw / p99_normal for raw in raw_distances]
     
     mean_s = float(np.mean(normal_scores))
     std_s  = float(np.std(normal_scores))
     
-    # Threshold = 1.0 is the natural boundary (normal < 1.0, anomaly > 1.0)
-    # But we can adjust slightly based on training data distribution
     threshold = round(max(1.0, mean_s + sigma * std_s), 6)
 
     print(f"  p99_normal (raw)  : {p99_normal:.4f}")
@@ -202,7 +150,6 @@ def train(
     print(f"  Normal score std  : {std_s:.4f}")
     print(f"  Threshold         : {threshold:.4f}")
 
-    # 6. Optional AUROC evaluation on test set
     i_auroc, p_auroc = None, None
     if test_dir:
         print(f"\n[3b] Evaluating on test set: {test_dir}")
@@ -220,7 +167,6 @@ def train(
                         continue
                     try:
                         raw_max, _ = _score_image(img_path, memory_bank, bb, device, num_neighbors)
-                        # Normalize using p99_normal for evaluation
                         normalized_score = raw_max / p99_normal
                         scores.append(normalized_score)
                         labels.append(label)
@@ -237,7 +183,6 @@ def train(
         except Exception as e:
             print(f"  AUROC evaluation failed: {e}")
 
-    # 7. Save model
     print("\n[4/4] Saving model...")
     stem = output_name or f"{category}_patch_core_updated"
     output_path = os.path.join(MODELS_DIR, f"{stem}.pkl")
@@ -270,7 +215,7 @@ def train(
 
     size_mb = os.path.getsize(output_path) / (1024 * 1024)
     print(f"\n{'='*60}")
-    print(f"  ✅ Model saved: {output_path}")
+    print(f"  [SUCCESS] Model saved: {output_path}")
     print(f"     Size        : {size_mb:.1f} MB")
     print(f"     p99_normal  : {p99_normal:.4f}")
     print(f"     Threshold   : {threshold:.4f}")
@@ -280,8 +225,6 @@ def train(
 
     return output_path, threshold
 
-
-# ── CLI entry point ───────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(

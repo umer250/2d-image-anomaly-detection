@@ -1,31 +1,4 @@
-"""
-Preprocessing pipeline for 2D anomaly detection images.
-
-TWO MODES:
-─────────────────────────────────────────────────────────────────
-1. Dataset mode  (remove_bg=False)  — MVTec-style studio images
-   Steps: Load → EXIF fix → RGB → Resize 224×224 → ImageNet normalize
-   Used for: MVTec training images, dataset test images
-
-2. Real-world mode (remove_bg=True) — phone / camera photos
-   Steps: Load → EXIF fix → RGB → BG removal → CLAHE → Percentile
-          stretch → Resize 224×224 → ImageNet normalize
-   Used for: user-uploaded real-world images via the web UI
-
-WHY CLAHE for real-world:
-   Phone cameras have variable exposure, contrast, and white balance.
-   CLAHE (in LAB space, L-channel only) normalises the lightness without
-   shifting hue.  Percentile stretch then maps the pixel range to match
-   MVTec studio lighting (p2–p98).  Without these, the model sees
-   "alien" pixel distributions → flat / incorrect heatmaps.
-
-WHY NO CLAHE for dataset images:
-   MVTec images were shot under controlled studio conditions with
-   consistent lighting.  Applying CLAHE would add artificial variation
-   and degrade the anomaly map quality.
-─────────────────────────────────────────────────────────────────
-"""
-
+﻿
 import io
 import logging
 import numpy as np
@@ -49,19 +22,11 @@ except ImportError:
     _REMBG_AVAILABLE = False
 
 
-# ── Constants ─────────────────────────────────────────────────────────────────
-
-# ImageNet normalization — must match WideResNet50 pretraining and Kaggle training
 _MEAN = [0.485, 0.456, 0.406]
 _STD  = [0.229, 0.224, 0.225]
 
-# Blur threshold (Laplacian variance)
 BLUR_THRESHOLD = 30.0
 
-# ── Per-category background colour for rembg composite ───────────────────────
-# 'black' → bottle, cable, capsule, metal_nut, transistor  (dark MVTec background)
-# 'white' → hazelnut, pill, screw, toothbrush, zipper      (light MVTec background)
-# 'none'  → textures (no bg removal at all regardless of remove_bg flag)
 CATEGORY_BG_COLOR: Dict[str, str] = {
     "bottle"     : "black",
     "cable"      : "black",
@@ -73,7 +38,6 @@ CATEGORY_BG_COLOR: Dict[str, str] = {
     "screw"      : "white",
     "toothbrush" : "white",
     "zipper"     : "white",
-    # Textures — bg removal skipped even if remove_bg=True
     "carpet"     : "none",
     "grid"       : "none",
     "leather"    : "none",
@@ -84,13 +48,7 @@ CATEGORY_BG_COLOR: Dict[str, str] = {
 VALID_CATEGORIES = list(CATEGORY_BG_COLOR.keys())
 
 
-# ── Quality check ─────────────────────────────────────────────────────────────
-
 def check_image_quality(image_path: str) -> Dict[str, Any]:
-    """
-    Check image sharpness via Laplacian variance.
-    Returns a warning flag but never blocks inference.
-    """
     try:
         img = cv2.imread(image_path)
         if img is None:
@@ -98,7 +56,6 @@ def check_image_quality(image_path: str) -> Dict[str, Any]:
 
         gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # Mask out near-white background so white bg doesn't drag score down
         non_white_mask = gray < 240
         if non_white_mask.sum() > 500:
             coords = np.argwhere(non_white_mask)
@@ -111,21 +68,12 @@ def check_image_quality(image_path: str) -> Dict[str, Any]:
 
         is_blurry = blur_score < BLUR_THRESHOLD
         message   = "Image may be blurry. Results may be less accurate." if is_blurry else ""
-        # Never block inference — only warn
         return {"blur_score": round(blur_score, 2), "is_blurry": False, "message": message}
     except Exception:
         return {"blur_score": 999.0, "is_blurry": False, "message": ""}
 
 
-# ── Real-world helpers ────────────────────────────────────────────────────────
-
 def _remove_background(img: Image.Image, bg_color: str = "black") -> Image.Image:
-    """
-    Remove background using rembg and composite on a solid colour.
-
-    bg_color='black'  → MVTec dark background (bottle, cable, capsule …)
-    bg_color='white'  → MVTec light background (hazelnut, pill, screw …)
-    """
     if not _REMBG_AVAILABLE:
         print("[preprocess] rembg not installed — skipping background removal.")
         return img
@@ -144,11 +92,6 @@ def _remove_background(img: Image.Image, bg_color: str = "black") -> Image.Image
 
 
 def _apply_clahe(img_np: np.ndarray) -> np.ndarray:
-    """
-    CLAHE in LAB space — normalises lightness without shifting hue/saturation.
-    Applied only to the L channel to avoid colour distortion.
-    Fixes dark, overexposed, or unevenly lit phone photos.
-    """
     lab  = cv2.cvtColor(img_np, cv2.COLOR_RGB2LAB)
     cl   = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
     lab[:, :, 0] = cl.apply(lab[:, :, 0])
@@ -156,11 +99,6 @@ def _apply_clahe(img_np: np.ndarray) -> np.ndarray:
 
 
 def _percentile_stretch(img_np: np.ndarray) -> np.ndarray:
-    """
-    Percentile contrast stretch (p2–p98) to match MVTec studio lighting.
-    Maps the usable pixel range to [0, 255], clipping extreme outliers.
-    This bridges the gap between phone camera exposure and MVTec distribution.
-    """
     f   = img_np.astype(np.float32) / 255.0
     p2  = np.percentile(f, 2)
     p98 = np.percentile(f, 98)
@@ -168,7 +106,52 @@ def _percentile_stretch(img_np: np.ndarray) -> np.ndarray:
     return (f * 255).astype(np.uint8)
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+def _smart_object_crop(img: Image.Image) -> Image.Image:
+    try:
+        img_np = np.array(img, dtype=np.uint8)
+        h, w = img_np.shape[:2]
+        img_area = h * w
+
+        gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
+
+        blurred = cv2.GaussianBlur(gray, (5, 5), 0)
+        edges = cv2.Canny(blurred, 30, 100)
+
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 15))
+        dilated = cv2.dilate(edges, kernel, iterations=3)
+
+        contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if not contours:
+            return img
+
+        largest = max(contours, key=cv2.contourArea)
+        contour_area = cv2.contourArea(largest)
+
+        if contour_area < img_area * 0.10 or contour_area > img_area * 0.90:
+            return img
+
+        x, y, bw, bh = cv2.boundingRect(largest)
+
+        pad_x = int(bw * 0.10)
+        pad_y = int(bh * 0.10)
+        x1 = max(0, x - pad_x)
+        y1 = max(0, y - pad_y)
+        x2 = min(w, x + bw + pad_x)
+        y2 = min(h, y + bh + pad_y)
+
+        if (x2 - x1) < 32 or (y2 - y1) < 32:
+            return img
+
+        cropped = img_np[y1:y2, x1:x2]
+        print(f"[preprocess] Smart crop: ({w}×{h}) → ({x2-x1}×{y2-y1}) "
+              f"[object fills {contour_area/img_area*100:.0f}% of frame]")
+        return Image.fromarray(cropped)
+
+    except Exception as e:
+        print(f"[preprocess] Smart crop failed (non-fatal): {e}")
+        return img
+
 
 def preprocess_image(
     image_path: str,
@@ -176,83 +159,46 @@ def preprocess_image(
     target_size: Tuple[int, int] = (224, 224),
     remove_bg: bool = False,
 ) -> Tuple[Any, np.ndarray]:
-    """
-    Unified preprocessing pipeline.
-
-    Dataset mode (remove_bg=False):
-        Load → EXIF fix → RGB → Resize 224×224 → ImageNet normalize
-        Matches Kaggle training exactly — no augmentation, no CLAHE.
-
-    Real-world mode (remove_bg=True):
-        Load → EXIF fix → RGB
-        → BG removal (category-aware bg_color)
-        → CLAHE contrast fix  (normalise phone camera lighting)
-        → Percentile stretch  (match MVTec studio distribution)
-        → Resize 224×224
-        → ImageNet normalize
-
-    NOTE: Texture categories (carpet, grid, leather, tile, wood) skip
-    background removal even if remove_bg=True — they fill the frame.
-
-    Args:
-        image_path  : Path to image file.
-        category    : MVTec category name (used for bg_color selection).
-        target_size : (width, height) — defaults to (224, 224).
-        remove_bg   : True → apply real-world pipeline (bg removal + CLAHE).
-
-    Returns:
-        img_tensor  (torch.Tensor) : shape (1, 3, 224, 224), float32
-        img_display (np.ndarray)   : shape (224, 224, 3),    uint8  (for heatmap)
-    """
     if not _TORCH_AVAILABLE:
         raise ImportError("torch and torchvision are required. pip install torch torchvision")
 
     try:
-        # ── 1. Load ───────────────────────────────────────────────────────────
         img = Image.open(image_path)
 
-        # ── 2. EXIF rotation fix (portrait phone photos can be rotated 90°) ──
         try:
             img = ImageOps.exif_transpose(img)
         except Exception as exif_err:
             logger.warning(f"[preprocess] EXIF transpose failed (non-fatal): {exif_err}")
 
-        # ── 3. Convert to RGB ─────────────────────────────────────────────────
         if img.mode != "RGB":
             img = img.convert("RGB")
 
-        # ── 4. Real-world pipeline ────────────────────────────────────────────
         bg_cfg = CATEGORY_BG_COLOR.get(category, "white")
 
         if remove_bg and bg_cfg != "none":
-            # 4a. Background removal (category-aware bg colour)
             print(f"[preprocess] Real-world mode: remove_bg=True, bg_color={bg_cfg}, category={category}")
             img = _remove_background(img, bg_color=bg_cfg)
 
-            # 4b. CLAHE — normalise lighting from phone camera
+            img = _smart_object_crop(img)
+
             img_np = np.array(img, dtype=np.uint8)
             img_np = _apply_clahe(img_np)
 
-            # 4c. Percentile contrast stretch — match MVTec studio distribution
             img_np = _percentile_stretch(img_np)
 
             img = Image.fromarray(img_np)
 
         elif remove_bg and bg_cfg == "none":
-            # Texture category — skip bg removal, but still apply contrast fix
             print(f"[preprocess] Texture category '{category}' — skipping bg removal, applying contrast fix.")
             img_np = np.array(img, dtype=np.uint8)
             img_np = _apply_clahe(img_np)
             img_np = _percentile_stretch(img_np)
             img = Image.fromarray(img_np)
 
-        # ── 5. Resize to 224×224 ──────────────────────────────────────────────
         img = img.resize(target_size, Image.LANCZOS)
 
-        # ── 6. uint8 copy for heatmap generation (before normalization) ────────
         img_display: np.ndarray = np.array(img, dtype=np.uint8)
 
-        # ── 7. ImageNet normalize → tensor (1, 3, 224, 224) ───────────────────
         img_tensor = TF.to_tensor(img)
         img_tensor = TF.normalize(img_tensor, mean=_MEAN, std=_STD)
         img_tensor = img_tensor.unsqueeze(0)

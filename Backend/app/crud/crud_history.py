@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session
+﻿from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.models.history import History
 from app.schemas.history import HistoryCreate

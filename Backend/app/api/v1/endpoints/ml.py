@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
+﻿from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from typing import Any, List
 import shutil
 import os
@@ -23,25 +23,21 @@ from app.ml.model_loader import model_loader
 
 router = APIRouter()
 
-# Constants
 MODEL_VERSION = "PatchCore-WideResNet50-v1"
 UPLOAD_DIR = "static/uploads"
 HEATMAP_DIR = "static/heatmaps"
 
-# Ensure directories exist
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(HEATMAP_DIR, exist_ok=True)
 
 
 @router.get("/health")
 def health_check() -> Any:
-    """Check if the ML service is healthy."""
     return {"status": "healthy", "service": "anomaly-detection-ml"}
 
 
 @router.get("/model-info")
 def model_info() -> Any:
-    """Get information about the current active model."""
     return {
         "model_name": "PatchCore",
         "model_version": MODEL_VERSION,
@@ -53,10 +49,6 @@ def model_info() -> Any:
 
 @router.get("/model-status")
 def model_status() -> Any:
-    """
-    Returns which categories have trained models.
-    No authentication required.
-    """
     available = model_loader.get_available_categories()
     all_categories = VALID_CATEGORIES
 
@@ -70,7 +62,6 @@ def model_status() -> Any:
 
 @router.get("/model-threshold")
 def model_threshold(category: str = "bottle") -> Any:
-    """Return the current threshold for a given category."""
     threshold = model_loader.get_threshold(category)
     return {"category": category, "threshold": threshold}
 
@@ -83,13 +74,6 @@ async def predict(
     db: Session = Depends(deps.get_db),
     current_user=Depends(deps.get_current_user),
 ) -> Any:
-    """
-    Run PatchCore anomaly detection on an uploaded image.
-
-    Returns:
-        image_id, anomaly_score (0-1), is_anomaly, heatmap_path,
-        original_path, threshold, category, model_version
-    """
     if category not in VALID_CATEGORIES:
         raise HTTPException(
             status_code=400,
@@ -99,7 +83,6 @@ async def predict(
     try:
         request_start = time.perf_counter()
 
-        # 1. Save uploaded file to disk
         file_ext = (
             file.filename.rsplit(".", 1)[-1].lower()
             if file.filename and "." in file.filename
@@ -116,7 +99,6 @@ async def predict(
             f"file={file.filename!r} saved→{filename}"
         )
 
-        # 2. Run inference — preprocessing is handled inside run_inference
         infer_start = time.perf_counter()
         try:
             result = run_inference(file_path, category=category, remove_bg=remove_bg)
@@ -138,11 +120,9 @@ async def predict(
         threshold    = result["threshold"]
         image_quality = result.get("image_quality", {})
 
-        # Warn on blur — never block inference; frontend shows warning alongside results
         if image_quality.get("is_blurry", False):
             logger.warning(f"[predict] Image quality warning: {image_quality.get('message')}")
 
-        # 4. Generate heatmap
         heatmap_filename = f"heatmap_{filename.rsplit('.', 1)[0]}.png"
         heatmap_path_rel = os.path.join(HEATMAP_DIR, heatmap_filename)
 
@@ -155,7 +135,6 @@ async def predict(
             category=category,
         )
 
-        # 5. Persist Image record
         db_image = Image(
             filename=filename,
             file_path=file_path,
@@ -165,7 +144,6 @@ async def predict(
         db.commit()
         db.refresh(db_image)
 
-        # 6. Persist Result record
         web_heatmap_path = f"/{generated_paths['overlay'].replace(os.sep, '/')}"
         web_hot_map_path = f"/{generated_paths['hot'].replace(os.sep, '/')}"
         web_contour_path = f"/{generated_paths['contour'].replace(os.sep, '/')}"
@@ -188,7 +166,6 @@ async def predict(
         db.add(db_result)
         db.commit()
 
-        # 7. Persist History record (includes category column)
         db_history = HistoryModel(
             user_id=current_user.id,
             filename=file.filename,
@@ -247,25 +224,6 @@ async def calibrate_threshold(
     files: List[UploadFile] = File(default=[]),
     current_user=Depends(deps.get_current_user),
 ) -> Any:
-    """
-    Recalculate the anomaly threshold from a set of NORMAL reference images.
-
-    Upload a batch of known-normal images; the endpoint scores each one and
-    sets the threshold to the `percentile`-th score (default 95th percentile).
-    This means 95% of normal images will score below the threshold.
-
-    If no files are uploaded, the threshold is recalculated from the memory
-    bank's own internal score distribution (nearest-neighbour self-distances),
-    which is a reasonable proxy when you don't have labelled normal images.
-
-    Args:
-        category:   MVTec category name (must have a trained model).
-        percentile: Percentile of normal scores to use as threshold (0-100).
-        files:      Optional list of known-normal images.
-
-    Returns:
-        new_threshold, category, method, num_samples
-    """
     if category not in VALID_CATEGORIES:
         raise HTTPException(status_code=400, detail=f"Invalid category: {category}")
 
@@ -282,7 +240,6 @@ async def calibrate_threshold(
         scores: List[float] = []
 
         if files:
-            # Score each uploaded normal image
             for upload in files:
                 ext = (upload.filename.rsplit(".", 1)[-1].lower()
                        if upload.filename and "." in upload.filename else "jpg")
@@ -300,20 +257,16 @@ async def calibrate_threshold(
 
             method = "uploaded_normal_images"
         else:
-            # Fallback: use memory bank self-distances as a proxy for normal scores
             bb = _get_backbone()
             device = bb.device
             model_data = model_loader.get_model(category)
             memory_bank = torch.tensor(
                 model_data["memory_bank"], dtype=torch.float32, device=device
             )
-            # Sample up to 2000 patches to keep it fast
             n = memory_bank.shape[0]
             idx = torch.randperm(n, device=device)[:min(n, 2000)]
             sample = memory_bank[idx]
-            # Each patch's nearest neighbour distance (excluding itself)
             dists = torch.cdist(sample, memory_bank, p=2.0)
-            # Zero out self-distance by setting diagonal to large value
             dists[torch.arange(len(idx)), idx[:len(idx)]] = 1e9
             min_dists, _ = dists.min(dim=1)
             raw_scores = min_dists.cpu().numpy()
@@ -326,7 +279,6 @@ async def calibrate_threshold(
         new_threshold = float(np.percentile(scores, percentile))
         new_threshold = round(new_threshold, 6)
 
-        # Persist the new threshold
         model_loader.update_threshold(category, new_threshold)
 
         return {

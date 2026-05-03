@@ -1,10 +1,9 @@
-from sqlalchemy.orm import Session
+﻿from sqlalchemy.orm import Session
 from typing import List, Optional
 
 from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryUpdate
 
-# All 15 official MVTec AD categories
 DEFAULT_CATEGORIES = [
     "bottle", "cable", "capsule", "carpet", "grid",
     "hazelnut", "leather", "metal_nut", "pill", "screw",
@@ -47,7 +46,6 @@ def update_category(
 
 
 def seed_default_categories(db: Session) -> int:
-    """Insert all default MVTec categories if they don't already exist. Returns count inserted."""
     inserted = 0
     for name in DEFAULT_CATEGORIES:
         if not get_category_by_name(db, name):

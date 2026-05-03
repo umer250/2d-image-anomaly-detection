@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
+﻿from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 from app.api import deps
 from app.schemas.user import User
@@ -18,30 +18,22 @@ def upload_image(
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.get_current_active_user)
 ):
-    """
-    Upload an image for anomaly detection.
-    Processes image through ML pipeline and saves results to DB.
-    """
-    # Ensure uploads directory exists
     UPLOAD_DIR = "uploads"
     HEATMAP_DIR = "heatmaps"
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     os.makedirs(HEATMAP_DIR, exist_ok=True)
     
-    # Generate unique filename
     file_ext = os.path.splitext(file.filename)[1]
     unique_id = str(uuid4())
     unique_filename = f"{unique_id}{file_ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
     
-    # Save original image
     try:
         with open(file_path, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Could not save file: {str(e)}")
     
-    # 1. Save Image record to DB
     image_in = ImageCreate(
         filename=unique_filename,
         file_path=file_path,
@@ -49,21 +41,16 @@ def upload_image(
     )
     db_image = crud_image.create_image(db, image=image_in)
     
-    # 2. Run ML Pipeline
     try:
-        # Preprocess
         processed_img = preprocess.preprocess_image(file_path)
         
-        # Inference
         anomaly_score = inference.run_inference(processed_img)
         
-        # Postprocess (generate heatmap)
         heatmap_filename = f"heatmap_{unique_id}.png"
         heatmap_path = os.path.join(HEATMAP_DIR, heatmap_filename)
         threshold = 0.6
         postprocess.generate_heatmap(file_path, heatmap_path, anomaly_score, threshold)
         
-        # 3. Save Result record to DB
         result_in = ResultCreate(
             image_id=db_image.id,
             anomaly_score=anomaly_score,
@@ -85,6 +72,4 @@ def upload_image(
         }
         
     except Exception as e:
-        # In case ML fails, we still have the image but maybe no result
-        # For now, raise error to be safe
         raise HTTPException(status_code=500, detail=f"ML Processing failed: {str(e)}")

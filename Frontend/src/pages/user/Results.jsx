@@ -381,25 +381,25 @@ const Results = () => {
     return (
         <div className="max-w-6xl mx-auto space-y-8">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                    <Link to="/upload" className="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-colors border border-zinc-800">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center space-x-4 min-w-0">
+                    <Link to="/upload" className="p-2 bg-zinc-900 hover:bg-zinc-800 rounded-lg transition-colors border border-zinc-800 shrink-0">
                         <ArrowLeft className="text-zinc-400 hover:text-white" size={20} />
                     </Link>
-                    <h1 className="text-2xl font-bold text-white">Analysis Results</h1>
+                    <h1 className="text-xl md:text-2xl font-bold text-white truncate">Analysis Results</h1>
                 </div>
-                <div className="flex space-x-3">
+                <div className="flex flex-wrap gap-3">
                     <button
                         onClick={shareViaGmail}
-                        className="flex items-center px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-300 hover:bg-zinc-800 transition-colors"
+                        className="flex-1 md:flex-none flex justify-center items-center px-4 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-zinc-300 hover:bg-zinc-800 transition-colors whitespace-nowrap"
                     >
-                        <Share2 size={18} className="mr-2" /> Share
+                        <Share2 size={18} className="mr-2 shrink-0" /> Share
                     </button>
                     <button
                         onClick={generatePDF}
-                        className="flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors font-medium shadow-lg shadow-indigo-900/20"
+                        className="flex-1 md:flex-none flex justify-center items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 transition-colors font-medium shadow-lg shadow-indigo-900/20 whitespace-nowrap"
                     >
-                        <Download size={18} className="mr-2" /> Export PDF
+                        <Download size={18} className="mr-2 shrink-0" /> Export PDF
                     </button>
                 </div>
             </div>

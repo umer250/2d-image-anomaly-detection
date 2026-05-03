@@ -6,8 +6,10 @@
 
 
 @layer base {
-  html {
+  html, body {
     color-scheme: dark;
+    overflow-x: hidden;
+    max-width: 100vw;
   }
 
   body {

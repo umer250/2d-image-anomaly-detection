@@ -1,8 +1,4 @@
-"""
-Admin endpoints: user management, image monitoring, analytics, stats, categories.
-All endpoints require admin role.
-"""
-
+﻿
 from typing import Any, List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -27,7 +23,6 @@ from app.schemas.category import Category as CategorySchema
 
 router = APIRouter()
 
-# ── System password (from env, never hardcoded) ───────────────────────────────
 def _get_system_password() -> str:
     pwd = os.getenv("SYSTEM_PASSWORD", "")
     if not pwd:
@@ -37,7 +32,6 @@ def _get_system_password() -> str:
         )
     return pwd
 
-# ── Valid categories (MVTec AD — 15 official categories) ──────────────────────
 VALID_CATEGORIES = [
     "bottle", "cable", "capsule", "carpet", "grid",
     "hazelnut", "leather", "metal_nut", "pill", "screw",
@@ -45,27 +39,12 @@ VALID_CATEGORIES = [
 ]
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# STATS  (TASK 4)
-# ═══════════════════════════════════════════════════════════════════════════════
-
 @router.get("/stats")
 def get_stats(
     *,
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """
-    Return dashboard summary stats.
-
-    Response shape:
-    {
-      total_users, total_predictions, anomaly_count, normal_count,
-      anomaly_rate,
-      predictions_per_category: { <name>: {count, anomaly_count} },
-      activity_last_7_days: [ {date, count} × 7 ]
-    }
-    """
     try:
         total_users = db.query(User).count()
         total_predictions = db.query(History).count()
@@ -77,7 +56,6 @@ def get_stats(
             else 0.0
         )
 
-        # Per-category breakdown
         predictions_per_category: dict = {}
         for cat in VALID_CATEGORIES:
             cat_total = (
@@ -93,7 +71,6 @@ def get_stats(
                 "anomaly_count": cat_anomaly,
             }
 
-        # Activity last 7 days
         now = datetime.utcnow()
         activity_last_7_days = []
         for i in range(6, -1, -1):
@@ -121,22 +98,13 @@ def get_stats(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# CATEGORIES  (TASK 5)
-# ═══════════════════════════════════════════════════════════════════════════════
-
 @router.get("/categories", response_model=List[CategorySchema])
 def list_categories(
     *,
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """
-    Return all categories with their training status, AUROC scores, and model paths.
-    Auto-seeds default MVTec categories if the table is empty.
-    """
     try:
-        # Seed defaults on first call if table is empty
         seed_default_categories(db)
         return get_all_categories(db)
     except Exception as e:
@@ -144,10 +112,6 @@ def list_categories(
         logging.error(f"list_categories error: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# USERS
-# ═══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/users", response_model=List[UserSchema])
 def get_all_users(
@@ -157,7 +121,6 @@ def get_all_users(
     limit: int = 100,
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """Retrieve all users (Admin only). Supports pagination."""
     return crud_user.get_all_users(db, skip=skip, limit=limit)
 
 
@@ -168,7 +131,6 @@ def create_user_by_admin(
     user_in: UserCreate,
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """Create new user (Admin only)."""
     user = crud_user.get_user_by_email(db, email=user_in.email)
     if user:
         raise HTTPException(
@@ -186,7 +148,6 @@ def update_user_by_admin(
     user_in: UserUpdate,
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """Update user details (Admin only)."""
     user = crud_user.update_user(db, user_id=user_id, user_update=user_in)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
@@ -200,7 +161,6 @@ def delete_user_by_admin(
     user_id: int,
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """Delete user (Admin only). Cannot delete yourself."""
     if user_id == current_user.id:
         raise HTTPException(status_code=400, detail="Cannot delete your own account")
     success = crud_user.delete_user(db, user_id=user_id)
@@ -208,10 +168,6 @@ def delete_user_by_admin(
         raise HTTPException(status_code=404, detail="User not found")
     return {"message": "User deleted successfully"}
 
-
-# ═══════════════════════════════════════════════════════════════════════════════
-# IMAGES
-# ═══════════════════════════════════════════════════════════════════════════════
 
 @router.get("/images")
 def get_all_images(
@@ -221,7 +177,6 @@ def get_all_images(
     limit: int = 100,
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """Get all uploaded images from all users (Admin only)."""
     from sqlalchemy.orm import joinedload
 
     try:
@@ -238,7 +193,6 @@ def get_all_images(
             if up_date and not isinstance(up_date, str):
                 up_date = up_date.isoformat()
 
-            # Try to get richer data from History for this image (by file_path)
             history_record = (
                 db.query(History)
                 .filter(History.file_path == img.file_path)
@@ -277,10 +231,6 @@ def get_all_images(
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# ANALYTICS  (existing — kept intact)
-# ═══════════════════════════════════════════════════════════════════════════════
-
 @router.get("/analytics")
 def get_analytics(
     *,
@@ -296,7 +246,6 @@ def get_analytics(
 
         now = datetime.now()
 
-        # Hourly activity (last 24 h)
         daily_activity = []
         for i in range(23, -1, -1):
             t = now - timedelta(hours=i)
@@ -308,14 +257,12 @@ def get_analytics(
             ).count()
             daily_activity.append(count)
 
-        # Weekly activity (last 7 days)
         weekly_activity = []
         for i in range(6, -1, -1):
             day = (now - timedelta(days=i)).date()
             count = db.query(History).filter(func.date(History.created_at) == day).count()
             weekly_activity.append(count)
 
-        # Monthly activity (last 12 months)
         monthly_activity = []
         for i in range(11, -1, -1):
             month = (now.month - i - 1) % 12 + 1
@@ -326,7 +273,6 @@ def get_analytics(
             ).count()
             monthly_activity.append(count)
 
-        # Anomaly trends (last 12 months)
         anomaly_trends = []
         for i in range(11, -1, -1):
             month = (now.month - i - 1) % 12 + 1
@@ -338,12 +284,10 @@ def get_analytics(
             ).count()
             anomaly_trends.append(count)
 
-        # Type distribution
         critical = db.query(History).filter(History.score >= 0.85).count()
         minor = db.query(History).filter(History.score >= 0.6, History.score < 0.85).count()
         noise = db.query(History).filter(History.score < 0.6).count()
 
-        # High-risk notifications
         recent_high_risk = []
         from app.models.settings import UserSettings
 
@@ -408,10 +352,6 @@ def get_analytics(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# SYSTEM MANAGEMENT
-# ═══════════════════════════════════════════════════════════════════════════════
-
 @router.post("/reset-system")
 def reset_system(
     *,
@@ -419,11 +359,6 @@ def reset_system(
     password: str,
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """
-    Soft-reset: clears physical upload/heatmap files from disk but keeps all
-    database records intact (History, Image, Result rows are preserved).
-    Requires SYSTEM_PASSWORD env variable.
-    """
     if password != _get_system_password():
         raise HTTPException(status_code=400, detail="Invalid system password.")
     try:
@@ -455,10 +390,6 @@ def wipe_all_users(
     password: str,
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """
-    Soft-wipe: sets is_active=False for all non-admin users.
-    Database records are preserved. Requires SYSTEM_PASSWORD env variable.
-    """
     if password != _get_system_password():
         raise HTTPException(status_code=400, detail="Invalid system password.")
     try:
@@ -477,17 +408,12 @@ def wipe_all_users(
         raise HTTPException(status_code=500, detail=f"Wipe failed: {str(e)}")
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-# SETTINGS
-# ═══════════════════════════════════════════════════════════════════════════════
-
 @router.get("/system-params")
 def get_system_params(
     *,
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """Get live system parameters including current model threshold."""
     from app.ml.model_loader import model_loader
     from app.ml.preprocess import VALID_CATEGORIES
 
@@ -519,11 +445,6 @@ def update_system_params(
     params_in: dict,
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """
-    Update live system parameters.
-    Accepts: { category: str, threshold: float, notification_enabled: int }
-    Threshold change takes effect immediately for all new predictions.
-    """
     from app.ml.model_loader import model_loader
 
     updated = {}
@@ -555,7 +476,6 @@ def get_admin_settings(
     db: Session = Depends(deps.get_db),
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """Get system settings for the current admin."""
     from app.models.settings import UserSettings
 
     settings = (
@@ -583,7 +503,6 @@ def update_admin_settings(
     settings_in: dict,
     current_user: User = Depends(deps.require_admin),
 ) -> Any:
-    """Update system settings for the current admin."""
     from app.models.settings import UserSettings
 
     settings = (

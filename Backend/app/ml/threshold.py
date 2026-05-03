@@ -1,4 +1,4 @@
-import os
+﻿import os
 import json
 import logging
 import numpy as np
@@ -6,7 +6,6 @@ from typing import List
 
 logger = logging.getLogger("app.ml.threshold")
 
-# Define the models directory (same as model loader)
 MODELS_DIR = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
     "ml_models",
@@ -15,10 +14,6 @@ THRESHOLDS_FILE = os.path.join(MODELS_DIR, "thresholds.json")
 
 
 def calculate_threshold(normal_scores: List[float]) -> float:
-    """
-    Calculate the optimal threshold for anomaly detection based on normal training scores.
-    Uses mean + 2 * standard deviation for ~95% specificity.
-    """
     if not normal_scores:
         return 0.5
 
@@ -28,7 +23,6 @@ def calculate_threshold(normal_scores: List[float]) -> float:
 
 
 def save_threshold(category: str, threshold: float) -> dict:
-    """Save the threshold for a specific category into the JSON config file."""
     os.makedirs(MODELS_DIR, exist_ok=True)
 
     thresholds = {}
@@ -48,10 +42,6 @@ def save_threshold(category: str, threshold: float) -> dict:
 
 
 def load_threshold(category: str) -> float:
-    """
-    Read the optimal threshold for a category from the config file.
-    Returns default (0.50) if the category or file does not exist.
-    """
     if not os.path.exists(THRESHOLDS_FILE):
         return 0.50
 

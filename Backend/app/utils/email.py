@@ -5,7 +5,6 @@ from app.core.config import settings
 
 
 def send_email(email_to: str, subject: str, html_content: str) -> None:
-    """Send email via SMTP (Gmail TLS)."""
     if not settings.SMTP_HOST or not settings.SMTP_USER or not settings.SMTP_PASSWORD:
         print(f"[email] SMTP not configured — OTP for {email_to}: {subject}")
         return
@@ -34,7 +33,6 @@ def send_email(email_to: str, subject: str, html_content: str) -> None:
 
 
 def send_reset_password_email(email_to: str, email: str, token: str) -> None:
-    """Send 6-digit OTP verification email."""
     project_name = settings.PROJECT_NAME
     subject = f"{project_name} — Your Verification Code: {token}"
 
@@ -61,5 +59,4 @@ def send_reset_password_email(email_to: str, email: str, token: str) -> None:
     </body>
     </html>
     """
-
     send_email(email_to=email_to, subject=subject, html_content=html_content)
